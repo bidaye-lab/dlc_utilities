@@ -1,5 +1,5 @@
-# Show infos on video file
-
+# Video info
+Displays frame rate, resolution, codec etc. of a video file
 ```>> ffprobe test_.mp4
 ffprobe version 5.1.1 Copyright (c) 2007-2022 the FFmpeg developers
   built with clang version 14.0.6
@@ -26,3 +26,13 @@ Input #0, mov,mp4,m4a,3gp,3g2,mj2, from 'test_.mp4':
       encoder         : Lavc59.37.100 libx264
 ```
 
+# Video compression
+Convert video file reduce its file size
+`ffmpeg -i input.mp4 -c:v libx264 -crf 23 output.mp4`
+The compression is controlled with `-crf 23` (lossless: 0, worst quality: 51, default: 23).
+The codec is specified with `-c:v libx264`.
+TODO: benchmark compression for DLC learning.
+
+## process multiple files
+Loop over all `.mp4` files, call `ffmpeg` and replace original file (Windows CMD for loop)
+```FOR %i IN (*.mp4) DO (ffmpeg -i %i -c:v libx264 -crf 23 tmp.mp4 && move tmp.mp4 %i)```
