@@ -35,4 +35,10 @@ TODO: benchmark compression for DLC learning.
 
 ## process multiple files
 Loop over all `.mp4` files, call `ffmpeg` and replace original file (Windows CMD for loop)
-```FOR %i IN (*.mp4) DO (ffmpeg -i %i -c:v libx264 -crf 23 tmp.mp4 && move tmp.mp4 %i)```
+```
+FOR %i IN (*.mp4) DO (
+  ffmpeg -i %i -c:v libx264 -crf 23 tmp.mp4 
+  move /Y tmp.mp4 %i
+)
+```
+
