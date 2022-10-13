@@ -41,7 +41,7 @@ The FAU clusters use the [slurm workload manager](https://slurm.schedmd.com/).
 Certain commands, such as `sbatch` or `sinfo`, are specific to this workload manager. 
 The [FAU HPC](https://hpc.fau.edu/) website is a good resource on how to use slurm.
 
-## Helpful commands
+### Helpful commands
 - show current usage of all nodes `gnodes` (has to be [downloaded](https://github.com/birc-aeh/slurm-utils/blob/master/gnodes) first)
 - show current jobs `squeue -u $USER`
 - show all available slurm partitions `sinfo`
@@ -49,11 +49,14 @@ The [FAU HPC](https://hpc.fau.edu/) website is a good resource on how to use slu
 ### Analyzing New Videos with DLC
 Assuming that the DLC model has been trained, new videos can be analyzed with the following steps:
 
-1. Place `submit_dlc.sh` and `run_dlc_analysis.py` in some project folder
+1. Place `submit_dlc.sh` and `run_dlc_analysis.py` in the project folder
 2. Adjust the file paths in the `run_dlc_analysis.py` and `config.yaml`
 3. Navigate to the project folder in the shell
-4. Call `sbatch submit_dlc.sh run_dlc_analysis.py`
-5. Call `squeue -u $USER` to check current progress
+4. Call `sbatch submit_dlc.sh run_dlc_analysis.py` (assumes both files to be in the project folder)
+
+All output from DLC is written in the `<submitscript>.<jobid>.out` file (`python` errors as well). 
+The corresponding `.err` file contains only errors from slurm.
+
 
 # Installing DLC on the clusters
 The following instructions will install DLC using a user-specific Anaconda installation.
