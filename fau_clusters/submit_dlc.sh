@@ -6,6 +6,9 @@
 #SBATCH --output="%x.%j.out"
 #SBATCH --error="%x.%j.err"
 
+# output file as defined by slurm
+OUT=${SLURM_JOB_NAME}.${SLURM_JOB_ID}.out
+
 # SLURM submit script to run DLC with custom conda environment 
 # not via modules
 
@@ -25,7 +28,11 @@ conda activate deeplabcut
 echo "HPC: Running DLC..."
 echo
 
+# run DLC: $1 is python file
 srun python $1 2>&1
+
+# clean up output file (progress bars look messy in plain text)
+sed -i 's/.*\r//' $OUT
 
 echo
 echo "HPC: ...DLC finished"
