@@ -51,7 +51,7 @@ The resources of the cluster can be distributed to quickly and efficiently use a
 
 Tutorial:
 1. Navigate to the file path
-2. <code>sbatch submit_test.sh test.py</code>
+2. <code>sbatch submit_dlc.sh run_dlc_analysis.py</code>
 3. <code>squeue -u $USER</code> (use this to check current progress)
 
 ## Miscellaneous Commands
