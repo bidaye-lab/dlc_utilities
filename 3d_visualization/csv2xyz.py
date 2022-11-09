@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-@author: nspiller
+@author: Nico Spiller
 """
 
 import pandas as pd
@@ -13,40 +13,63 @@ def run():
     parser = argparse.ArgumentParser(
         description='''Create xyz trajectory file from CSV''')
     parser.add_argument('csv', help='Name of the CSV file')
-    # parser.add_argument('-s', '--column', metavar='C', help='Name of the columns (default: F-TaG)', default='F-TaG', type=str)
+    parser.add_argument('-s', '--split', metavar='S', 
+    help='Split output files to S frames per file. Default: 1400', default=1400, type=int)
     # group = parser.add_mutually_exclusive_group()
     # group.add_argument('-n', '--entry', metavar='N', type=int, default=1, 
     #                    help='Replace values with nth entry (default: 1). To replace with mean of whole column, choose 0')
     args = parser.parse_args(['P9-RightTurner-N4-3Dpose.csv'])
     csv = Path(args.csv)
+    split = args.split
+    # bx, by, bz = 1556.960000844912, -7245.893156816584, 9129.774962573414
 
     df = pd.read_csv(csv) # read CSV into pandas dataframe
     df = df * 100 # scale for reasonable "bond lengths"
 
     col_x = [ i for i in df.columns if i.endswith('_x')]
-    # y = [ i for i in df.columns if i.endswith('_y')]
-    # z = [ i for i in df.columns if i.endswith('_z')]
+    points = [ i.rstrip('_x') for i in col_x ]
+    n = len(points) # number of "atoms"
 
-    joints = [ i.rstrip('_x') for i in col_x ]
-    
     lines = []
     for i in df.index:
-        lines.append( '{}\n'.format(str(len(joints))) )
-        lines.append('\n')
-        for j in joints:
+
+        lines.append('{}\n'.format(n) ) # first line: number of atoms
+        lines.append('Frame {}\n'.format(i)) # second line: commend
+
+        for j in points: # data lines: atom_name x_coord y_coord z_coord
             x = df.loc[i, j + '_x']
             y = df.loc[i, j + '_y']
             z = df.loc[i, j + '_z']
 
-            a = 'C'
             l = '{} {} {} {}\n'.format(j, x, y, z)
             lines.append(l)
-    
-    # 
-    xyz = csv.with_suffix('.xyz')
-    with open(xyz, 'w') as f:
-        f.writelines(lines)
 
+        # l = '{} {} {} {}\n'.format('Ball', x, y+300, z)
+        # lines.append(l)
+
+    
+    if split: # write files with fixed number of frames
+        xyz = lambda fid: csv.with_name(csv.stem + '_{}.xyz'.format(fid))
+        len_blk = split * ( n + 2 ) # each frame is n + 2 lines long
+        fid = 0
+        out = open(xyz(fid), 'w') # dummy file, will remain empty
+
+        for i, l in enumerate(lines):
+            if not i % len_blk:
+                out.close() # close previous file
+                fid += 1
+                out = open(xyz(fid), 'w')
+
+            out.write(l)
+
+        out.close()
+
+        xyz(0).unlink() # remove empty dummy file
+
+    else: # if 0, write one file
+        xyz = csv.with_suffix('.xyz')
+        with open(xyz, 'w') as f:
+            f.writelines(lines)
 
 if __name__ == '__main__':
     run()
