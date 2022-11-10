@@ -32,8 +32,12 @@ Note that all settings are specific for the "fly molecule"; any other actual mol
 and you would need to restore the original `vmd.rc` file.
 Some may argue that the fly looks strange, though.
 
+## Playing trajectories and making movies
+VMD can be used to view time-dependent, such as protein folding or chemical reactions 
+and it can also render high-quality movies.
+The best place to start is the [tutorial](https://www.ks.uiuc.edu/Training/Tutorials/vmd/tutorial-html/node3.html) on the official website.
 
-## Installation
+# Installation
 Follow these instructions to install VMD and set it up to display the "fly molecule":
 - download VMD 1.9.3 on the official [website](https://www.ks.uiuc.edu/Development/Download/download.cgi?PackageName=VMD)
   - this will require you to create an account (simply email and password)
