@@ -18,7 +18,7 @@ def run():
     # group = parser.add_mutually_exclusive_group()
     # group.add_argument('-n', '--entry', metavar='N', type=int, default=1, 
     #                    help='Replace values with nth entry (default: 1). To replace with mean of whole column, choose 0')
-    args = parser.parse_args(['P9-RightTurner-N4-3Dpose.csv'])
+    args = parser.parse_args()
     csv = Path(args.csv)
     split = args.split
     # bx, by, bz = 1556.960000844912, -7245.893156816584, 9129.774962573414
