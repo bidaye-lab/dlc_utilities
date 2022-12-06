@@ -22,7 +22,9 @@ All aspects of VMD can be controlled using the `tcl` scripting language.
 The instructions on how to display the "fly molecule" are stored in the `vmd.rc` file (see below).
 If you want to change anything about the default representation, it is convenient to edit this file, 
 so any newly opened XYZ file will be displayed in the same way.
-Note that on windows you need administrator access to edit the `vmd.rc` file.
+
+Note that on windows you need administrator access to edit the `vmd.rc` file at its deault location.
+A convenient way would be to edit a copy of the file, say, on the desktop, and copy/paste the updated file confirming administrator access.
 
 The best way to learn the correct commands that need to go into the `vmd.rc` file is to activate logging:
 In the VMD main window, click `File` and `Log Tcl commands to console`. 
