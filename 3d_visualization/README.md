@@ -37,7 +37,28 @@ Some may argue that the fly looks strange, though.
 ## Playing trajectories and making movies
 VMD can be used to view time-dependent, such as protein folding or chemical reactions 
 and it can also render high-quality movies.
-The best place to start is the [tutorial](https://www.ks.uiuc.edu/Training/Tutorials/vmd/tutorial-html/node3.html) on the official website.
+More resources can be found on the [VMD website](https://www.ks.uiuc.edu/Training/Tutorials/vmd/tutorial-html/node3.html).
+
+To convert the trajectory into a movie, select "Extensions > Visualization > Movie Maker".
+Here, chose "Renderer > Tachyon Internal".
+Under "Movie Settings" select "Trajectory" and _uncheck_ "Delete image files".
+Choose a suitable folder for the rendered images with "Set working direcory".
+Now hit "Make movie", which may take a while, use all avaible CPU cores, and may require quite a bit of storage (~5 GB for 1400 frames).
+
+Under windows, this will most likely end with a "Program not found" error (Could not locate videomach.exe).
+Click "No" and for the following "Application Error" click "OK".
+This is ok, because the individual image files are kept (see above) and can be converted into a movie using `ffmpeg`:
+Open the anaconda prompt, activate the DLC conda environment and navigate to the directory containing the generated image files.
+Run 
+```
+ffmpeg -framerate 50 -i untitled.%05d.bmp video.mp4
+```
+Here `video.mp4` is the name of the video file. The speed can be determined with the frame rate (original recordings: 200 Hz).
+Now the image files can be deleted.
+
+The resolution of the video can be adjusted by adjusting the size of the VMD window before rendering.
+By default, ambient occlusion is turned on, which will create better 3D images.
+However, this significantly increases the rendering time.
 
 # Installation
 Follow these instructions to install VMD and set it up to display the "fly molecule":
