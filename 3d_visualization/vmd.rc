@@ -49,9 +49,9 @@ color Labels Angles black
 color Labels Dihedrals black
 color Labels Springs black
 
-display projection Orthographic
-display rendermode normal
-display depthcue off
+display rendermode Normal
+
+
 
 # fly trajectory specific stuff
 proc fly_representation {} {
@@ -59,7 +59,7 @@ proc fly_representation {} {
 	# create 7 representations (6 legs and notum)
 	for {set i 0} {$i < 7} {incr i} {
 		mol addrep 0
-		mol modstyle $i 0 cpk 10.0 5.0 12.0 12.0
+		mol modstyle $i 0 cpk 1.0 0.5 12.0 12.0
 	}
 
 	# choose leg etc for each rep
@@ -76,13 +76,28 @@ proc fly_representation {} {
 	# define colors 
 	# first number: rep (see above)
 	# last number: colorid (see VMD settings))
-	mol modcolor 0 0 colorid 0
-	mol modcolor 1 0 colorid 1
-	mol modcolor 2 0 colorid 2
-	mol modcolor 3 0 colorid 3
-	mol modcolor 4 0 colorid 4
-	mol modcolor 5 0 colorid 5
-	mol modcolor 6 0 colorid 6
+	mol modcolor 0 0 colorid 2
+	mol modcolor 1 0 colorid 0
+	mol modcolor 2 0 colorid 14
+	mol modcolor 3 0 colorid 11
+	mol modcolor 4 0 colorid 10
+	mol modcolor 5 0 colorid 3
+	mol modcolor 6 0 colorid 9
+	
+	# materials
+	mol modmaterial 0 0 AOEdgy
+	mol modmaterial 1 0 AOEdgy
+	mol modmaterial 2 0 AOEdgy
+	mol modmaterial 3 0 AOEdgy
+	mol modmaterial 4 0 AOEdgy
+	mol modmaterial 5 0 AOEdgy
+	mol modmaterial 6 0 AOEdgy
+	
+	# render settings
+	display projection Orthographic
+	display depthcue off
+	display shadows on
+	display ambientocclusion on
 
 
 	# connect the legs (all incresing indices < 32)
