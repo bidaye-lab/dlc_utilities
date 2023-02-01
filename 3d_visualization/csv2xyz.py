@@ -15,7 +15,7 @@ def run():
     parser.add_argument('csv', help='Name of the CSV file')
     parser.add_argument('-s', '--split', metavar='S', 
     help='Split output files to S frames per file. Select 0 for no splitting. Default: 1400', default=1400, type=int)
-    args = parser.parse_args(['P9-RightTurner-N4-3Dpose.csv'])
+    args = parser.parse_args()
 
     csv = Path(args.csv) # input CSV
     split = args.split # number of frames for splitting
