@@ -56,10 +56,10 @@ display rendermode Normal
 # fly trajectory specific stuff
 proc fly_representation {} {
 
-	# create 7 representations (6 legs and notum)
-	for {set i 0} {$i < 7} {incr i} {
+	# create 8 representations (6 legs and notum and ball)
+	for {set i 0} {$i < 8} {incr i} {
 		mol addrep 0
-		mol modstyle $i 0 cpk 1.0 0.5 12.0 12.0
+		mol modstyle $i 0 cpk 0.8 0.4 12.0 12.0
 	}
 
 	# choose leg etc for each rep
@@ -70,8 +70,9 @@ proc fly_representation {} {
 	mol modselect 4 0 name \"R-F.*\"
 	mol modselect 5 0 name \"R-M.*\"
 	mol modselect 6 0 name \"R-H.*\"
+	mol modselect 7 0 name Ball
 	# delete default rep
-	mol delrep 7 0 
+	mol delrep 8 0 
 
 	# define colors 
 	# first number: rep (see above)
@@ -83,6 +84,7 @@ proc fly_representation {} {
 	mol modcolor 4 0 colorid 10
 	mol modcolor 5 0 colorid 3
 	mol modcolor 6 0 colorid 9
+	mol modcolor 7 0 colorid 2
 	
 	# materials
 	mol modmaterial 0 0 AOEdgy
@@ -92,6 +94,7 @@ proc fly_representation {} {
 	mol modmaterial 4 0 AOEdgy
 	mol modmaterial 5 0 AOEdgy
 	mol modmaterial 6 0 AOEdgy
+	mol modmaterial 7 0 AOEdgy
 	
 	# render settings
 	display projection Orthographic

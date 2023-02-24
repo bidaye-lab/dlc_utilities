@@ -15,11 +15,13 @@ def run():
     parser.add_argument('csv', help='Name of the CSV file')
     parser.add_argument('-s', '--split', metavar='S', 
     help='Split output files to S frames per file. Select 0 for no splitting. Default: 1400', default=1400, type=int)
+    parser.add_argument('-b', '--ball', nargs=3, metavar=('X', 'Y', 'Z'), help='Center position of the ball')
     args = parser.parse_args()
 
     csv = Path(args.csv) # input CSV
     split = args.split # number of frames for splitting
-    scl = 10 # scale for reasonable "bond lengths"
+    ball = args.ball # center position of the ball
+    scl = 5 # scale for reasonable "bond lengths"
 
     print('INFO reading file {}'.format(csv))
     df = pd.read_csv(csv) # read CSV into pandas dataframe
@@ -29,6 +31,8 @@ def run():
     col_x = [ i for i in df.columns if i.endswith('_x')]
     points = [ i.rstrip('x').rstrip('_') for i in col_x ]
     n = len(points) # number of "atoms"
+    if ball:
+        n += 1
     print('INFO found {} points'.format(n))
 
     print('INFO loading data ...')
@@ -46,9 +50,10 @@ def run():
             l = '{} {} {} {}\n'.format(j, x, y, z)
             lines.append(l)
 
-        # TODO add ball
-        # l = '{} {} {} {}\n'.format('Ball', x, y+300, z)
-        # lines.append(l)
+        if ball:
+            x, y, z = [ float(i) * scl for i in ball ]
+            l = '{} {} {} {}\n'.format('Ball', x, y, z)
+            lines.append(l)
 
     
     if split: # write files with fixed number of frames
