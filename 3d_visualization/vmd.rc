@@ -51,56 +51,52 @@ color Labels Springs black
 
 display rendermode Normal
 
-
 # fly trajectory specific stuff
-proc fly_representation {} {
-
+proc fly {} {
 
 	# create 9 representations (6 legs and notum and wing hinges and ball)
 	for {set i 0} {$i < 9} {incr i} {
-		mol addrep 0
-		mol modstyle $i 0 cpk 0.8 0.4 12.0 12.0
+		mol addrep top
+		mol modstyle $i top cpk 0.8 0.4 12.0 12.0
 	}
 
 	# choose leg etc for each rep
-	mol modselect 0 0 name Notum
-	mol modselect 1 0 name \"L-F.*\"
-	mol modselect 2 0 name \"L-M.*\"
-	mol modselect 3 0 name \"L-H.*\"
-	mol modselect 4 0 name \"R-F.*\"
-	mol modselect 5 0 name \"R-M.*\"
-	mol modselect 6 0 name \"R-H.*\"
-	mol modselect 7 0 name Ball
-	mol modselect 8 0 name \".*-WH\"
+	mol modselect 0 top name Notum
+	mol modselect 1 top name \"L-F.*\"
+	mol modselect 2 top name \"L-M.*\"
+	mol modselect 3 top name \"L-H.*\"
+	mol modselect 4 top name \"R-F.*\"
+	mol modselect 5 top name \"R-M.*\"
+	mol modselect 6 top name \"R-H.*\"
+	mol modselect 7 top name Ball
+	mol modselect 8 top name \".*-WH\"
 
 	# delete default rep
-	mol delrep 9 0 
+	mol delrep 9 top
 
 	# define colors 
 	# first number: rep (see above)
 	# last number: colorid (see VMD settings))
-	mol modcolor 0 0 colorid 2
-	mol modcolor 1 0 colorid 0
-	mol modcolor 2 0 colorid 14
-	mol modcolor 3 0 colorid 11
-	mol modcolor 4 0 colorid 10
-	mol modcolor 5 0 colorid 3
-	mol modcolor 6 0 colorid 9
-	mol modcolor 7 0 colorid 2
-	mol modcolor 8 0 colorid 2
-
+	mol modcolor 0 top colorid 2
+	mol modcolor 1 top colorid 0
+	mol modcolor 2 top colorid 14
+	mol modcolor 3 top colorid 11
+	mol modcolor 4 top colorid 10
+	mol modcolor 5 top colorid 3
+	mol modcolor 6 top colorid 9
+	mol modcolor 7 top colorid 2
+	mol modcolor 8 top colorid 2
 	
 	# materials
-	mol modmaterial 0 0 AOEdgy
-	mol modmaterial 1 0 AOEdgy
-	mol modmaterial 2 0 AOEdgy
-	mol modmaterial 3 0 AOEdgy
-	mol modmaterial 4 0 AOEdgy
-	mol modmaterial 5 0 AOEdgy
-	mol modmaterial 6 0 AOEdgy
-	mol modmaterial 7 0 AOEdgy
-
-	mol modmaterial 8 0 AOEdgy
+	mol modmaterial 0 top AOEdgy
+	mol modmaterial 1 top AOEdgy
+	mol modmaterial 2 top AOEdgy
+	mol modmaterial 3 top AOEdgy
+	mol modmaterial 4 top AOEdgy
+	mol modmaterial 5 top AOEdgy
+	mol modmaterial 6 top AOEdgy
+	mol modmaterial 7 top AOEdgy
+	mol modmaterial 8 top AOEdgy
 
 	# render settings
 	display projection Orthographic
@@ -117,7 +113,23 @@ proc fly_representation {} {
 	
 }
 
+proc uni {i} {
+
+	mol modcolor 0 top colorid $i
+	mol modcolor 1 top colorid $i
+	mol modcolor 2 top colorid $i
+	mol modcolor 3 top colorid $i
+	mol modcolor 4 top colorid $i
+	mol modcolor 5 top colorid $i
+	mol modcolor 6 top colorid $i
+	mol modcolor 7 top colorid $i
+	mol modcolor 8 top colorid $i
+	}
+
+proc ball {r} {
+	mol modstyle 7 top CPK $r 0.400000 120.000000 12.000000
+}
 
 after idle {
-	fly_representation
+	fly
 }
