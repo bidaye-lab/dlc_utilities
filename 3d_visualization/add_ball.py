@@ -7,21 +7,12 @@ from pathlib import Path
 import argparse
 
 
+def add_ball(xyz, x, y, z, s=5):
 
-def run():
-    
-    # command line parser
-    parser = argparse.ArgumentParser(
-        description='''Add `Ball` coordinates to xyz trajectory file or update `Ball` coordinates''')
-    parser.add_argument('xyz', help='Name of the XYZ file')
-    parser.add_argument('x', help='X position')
-    parser.add_argument('y', help='Y position')
-    parser.add_argument('z', help='Z position')
-    args = parser.parse_args()
-
-    xyz = Path(args.xyz) # trajectory file
-    x, y, z = args.x, args.y, args.z
-    print('INFO: new ball coordinates are (scaled by 5)')
+    x *= s
+    y *= s
+    z *= s
+    print('INFO: new ball coordinates are (scaled by {})'.format(s))
     print('      x = {}, y = {}, z = {}'.format(x, y, z))
         
     ball_line = '{} {} {} {}\n'.format('Ball', x, y, z)
@@ -56,7 +47,7 @@ def run():
                 l = line.split()
 
                 if l[0] == '33':
-                    line == '34\n'
+                    line = '34\n'
                 
                 if l[0] == 'Notum':
                     new_file.append(line)
@@ -71,6 +62,22 @@ def run():
     with open(xyz, 'w') as f:
         f.writelines(new_file)
 
+
+def run():
+    
+    # command line parser
+    parser = argparse.ArgumentParser(
+        description='''Add `Ball` coordinates to xyz trajectory file or update `Ball` coordinates''')
+    parser.add_argument('xyz', help='Name of the XYZ file')
+    parser.add_argument('x', help='X position')
+    parser.add_argument('y', help='Y position')
+    parser.add_argument('z', help='Z position')
+    args = parser.parse_args()
+
+    xyz = Path(args.xyz) # trajectory file
+    x, y, z = args.x, args.y, args.z
+
+    add_ball(xyz, x, y, z)
 
 if __name__ == '__main__':
     run()
