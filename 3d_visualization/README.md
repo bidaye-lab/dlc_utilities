@@ -15,7 +15,21 @@ Once VMD is set up for the "fly molecule", follow these steps:
   - run `python path-to-csv2xyz.py 3Dpose.csv` (depending on where you placed `csv2xyz.py` in your files)
 - open with VMD
 
-Note that the distances are scaled by a factor of 100 during the conversion from CSV to XYZ for a better representation in VMD.
+Note that the distances are scaled by some factor during the conversion from CSV to XYZ for a better representation in VMD.
+
+## Adding the ball
+You can add a ball to the VMD representation, if you know its position and radius.
+You need to the following:
+1. Add the x, y, and z coordinates for the ball's center when calling `csv2xyz.py`, for example:
+```
+python path-to-csv2xyz.py 3Dpose.csv --ball 0.25 1.25 2.5
+```
+2. Adjust the diameter of the ball "atom" in VMD, by pasting the following in the VMD terminal:
+```
+mol modstyle 7 0 CPK 33.3 1 100 1
+```
+Here, 33.3 represents the diameter of the ball "atom".
+To convert the ball diameter from anipose coordinates to VMD, multiply by the scaling factor printed by `csv2xyz.py`.
 
 ## Changing the representation
 All aspects of VMD can be controlled using the `tcl` scripting language.

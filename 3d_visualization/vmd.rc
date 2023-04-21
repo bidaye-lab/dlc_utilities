@@ -52,9 +52,9 @@ color Labels Springs black
 display rendermode Normal
 
 
-
 # fly trajectory specific stuff
 proc fly_representation {} {
+
 
 	# create 9 representations (6 legs and notum and wing hinges and ball)
 	for {set i 0} {$i < 9} {incr i} {
@@ -88,6 +88,7 @@ proc fly_representation {} {
 	mol modcolor 6 0 colorid 9
 	mol modcolor 7 0 colorid 2
 	mol modcolor 8 0 colorid 2
+
 	
 	# materials
 	mol modmaterial 0 0 AOEdgy
@@ -98,6 +99,7 @@ proc fly_representation {} {
 	mol modmaterial 5 0 AOEdgy
 	mol modmaterial 6 0 AOEdgy
 	mol modmaterial 7 0 AOEdgy
+
 	mol modmaterial 8 0 AOEdgy
 
 	# render settings
