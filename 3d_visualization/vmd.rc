@@ -52,12 +52,12 @@ color Labels Springs black
 display rendermode Normal
 
 
-
 # fly trajectory specific stuff
 proc fly_representation {} {
 
-	# create 8 representations (6 legs and notum and ball)
-	for {set i 0} {$i < 8} {incr i} {
+
+	# create 9 representations (6 legs and notum and wing hinges and ball)
+	for {set i 0} {$i < 9} {incr i} {
 		mol addrep 0
 		mol modstyle $i 0 cpk 0.8 0.4 12.0 12.0
 	}
@@ -71,8 +71,10 @@ proc fly_representation {} {
 	mol modselect 5 0 name \"R-M.*\"
 	mol modselect 6 0 name \"R-H.*\"
 	mol modselect 7 0 name Ball
+	mol modselect 8 0 name \".*-WH\"
+
 	# delete default rep
-	mol delrep 8 0 
+	mol delrep 9 0 
 
 	# define colors 
 	# first number: rep (see above)
@@ -85,6 +87,8 @@ proc fly_representation {} {
 	mol modcolor 5 0 colorid 3
 	mol modcolor 6 0 colorid 9
 	mol modcolor 7 0 colorid 2
+	mol modcolor 8 0 colorid 2
+
 	
 	# materials
 	mol modmaterial 0 0 AOEdgy
@@ -95,7 +99,9 @@ proc fly_representation {} {
 	mol modmaterial 5 0 AOEdgy
 	mol modmaterial 6 0 AOEdgy
 	mol modmaterial 7 0 AOEdgy
-	
+
+	mol modmaterial 8 0 AOEdgy
+
 	# render settings
 	display projection Orthographic
 	display depthcue off
@@ -108,9 +114,8 @@ proc fly_representation {} {
 		set j [expr $i + 1]
 		topo addbond $i $j 
 	}
+	
 }
-
-
 
 
 after idle {
