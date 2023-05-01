@@ -15,8 +15,8 @@ def run():
         This is useful when certain joints are badly tracked.
         Original file is overwritten, old file is saved as FILENAME_bak''')
     parser.add_argument('csv', help='Name of the CSV file')
-    parser.add_argument('-s', '--startswith', metavar='S', help='Remove column is name starts with S')
-    parser.add_argument('-e', '--endswith', metavar='E', help='Remove column is name ends with E')
+    parser.add_argument('-s', '--startswith', metavar='S', help='Remove column if name starts with S')
+    parser.add_argument('-e', '--endswith', metavar='E', help='Remove column if name ends with E')
 
     args = parser.parse_args()
     csv = Path(args.csv)
