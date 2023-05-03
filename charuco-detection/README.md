@@ -1,3 +1,3 @@
-# ChAruCo board detection with OpenCV
+# ChArUco board detection with OpenCV
 
 Use charuco-detection to quality control Anipose camera calibration.
