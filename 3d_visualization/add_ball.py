@@ -75,7 +75,7 @@ def run():
     args = parser.parse_args()
 
     xyz = Path(args.xyz) # trajectory file
-    x, y, z = args.x, args.y, args.z
+    x, y, z = float(args.x), float(args.y), float(args.z)
 
     add_ball(xyz, x, y, z)
 
