@@ -3,8 +3,14 @@ import os
 import glob as glob
 from pathlib import Path
 
-def analyze_new(videos_folders_path):
-    
+def analyze_new(videos_folders_path: Path):
+    """Run appropriate DLC models on videos in a given directory
+
+    Parameters
+    ----------
+    videos_folders_path : Path
+        File path to genotype directory with experiment videos
+    """
     model_paths = {
         'A': 'C:\\DLC\\3D_8cam_vid\\camA_FS34_RN101-BidayeLab-2022-09-20',
         'B':'C:\\DLC\\3D_8cam_vid\\3cam_BEH-BidayeLab-2022-09-16',
@@ -20,14 +26,14 @@ def analyze_new(videos_folders_path):
     for folder in videos_folders_path.glob('*/Ball'):
         video_folders.append(folder)
     
-    for i in range(0, len(video_folders)):
+    for video_folder in video_folders:
         single_folder = []
-        for idx in video_folders[i].glob('*.mp4'):
-            single_folder.append(idx)
+        for video_file in video_folders[i].glob('*.mp4'):
+            single_folder.append(video_file)
 
-        for i, idx in enumerate(single_folder):
-            print(f"current movie {idx.name}")
-            cam_type = str(idx.name)[0]
+        for i, video_file in enumerate(single_folder):
+            print(f"current movie {video_file.name}")
+            cam_type = str(video_file.name)[0]
             if cam_type not in model_paths:
                 print("Invalid camera type or movie file name")
             elif cam_type == 'G':
