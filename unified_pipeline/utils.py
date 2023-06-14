@@ -1,4 +1,5 @@
 import yaml
+from pathlib import Path
 
 def load_config(path: str):
     """Load config yml as dict.
@@ -19,3 +20,9 @@ def load_config(path: str):
 
 
     return cfg
+
+def backup_file(path: Path) -> None:
+    backup = Path(str(path) + '_backup')
+    path.replace(backup) 
+    print(f'[INFO] backup file saved to {backup}')
+    
