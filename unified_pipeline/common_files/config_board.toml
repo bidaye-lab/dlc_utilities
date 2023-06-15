@@ -1,0 +1,137 @@
+
+project = 'hand-demo'
+
+model_folder = 'C:\Divya\Anipose_Ball\3D_front_mid_top-DSK-2022-05-07' 
+
+nesting = 2
+video_extension = 'MP4'
+
+[calibration]
+# checkerboard / charuco / aruco
+board_type = "charuco"
+
+# width and height of grid
+board_size = [6, 6]
+
+# number of bits in the markers, if aruco/charuco
+board_marker_bits = 6
+
+# number of markers in dictionary, if aruco/charuco
+board_marker_dict_number = 50
+
+# length of marker side
+board_marker_length = 0.375 # mm
+
+# If aruco, length of marker separation
+# board_marker_separation_length = 0 # mm
+
+# If charuco or checkerboard, square side length
+board_square_side_length = 0.5 # mm
+
+animal_calibration = false
+
+fisheye = false
+
+[labeling]
+scheme = [
+   ["R-F-ThC", "R-F-CTr", "R-F-FeTi", "R-F-TiTa", "R-F-TaG"], 
+   ["L-F-ThC", "L-F-CTr", "L-F-FeTi", "L-F-TiTa", "L-F-TaG"],
+   ["R-M-ThC", "R-M-CTr", "R-M-FeTi", "R-M-TiTa", "R-M-TaG"],
+   ["L-M-ThC","L-M-CTr", "L-M-FeTi", "L-M-TiTa", "L-M-TaG"],
+   ["R-H-ThC", "R-H-CTr", "R-H-FeTi", "R-H-TiTa", "R-H-TaG"],
+   ["L-H-ThC", "L-H-CTr", "L-H-FeTi", "L-H-TiTa", "L-H-TaG"]
+ ] 
+
+[triangulation]
+triangulate = true
+cam_regex = '-([A-Z])'
+
+cam_align = "A"
+# reference_point = "R-M-FeTi"
+ransac = false
+optim = true
+constraints = [
+   ["R-F-ThC", "R-F-CTr"], ["R-F-CTr", "R-F-FeTi"], ["R-F-TiTa", "R-F-TaG"],["R-F-FeTi", "R-F-TiTa"],["R-F-TiTa", "R-F-TaG"],  
+   ["L-F-ThC", "L-F-CTr"], ["L-F-CTr", "L-F-FeTi"], ["L-F-TiTa", "L-F-TaG"],["L-F-FeTi", "L-F-TiTa"],["L-F-TiTa", "L-F-TaG"], 
+   ["R-M-ThC", "R-M-CTr"], ["R-M-CTr", "R-M-FeTi"], ["R-M-TiTa", "R-M-TaG"],["R-M-FeTi", "R-M-TiTa"],["R-M-TiTa", "R-M-TaG"], 
+   ["L-M-ThC", "L-M-CTr"],["L-M-CTr", "L-M-FeTi"], ["L-M-TiTa", "L-M-TaG"],["L-M-FeTi", "L-M-TiTa"],["L-M-TiTa", "L-M-TaG"], 
+   ["R-H-ThC", "R-H-CTr"], ["R-H-CTr", "R-H-FeTi"], ["R-H-TiTa", "R-H-TaG"],["R-H-FeTi", "R-H-TiTa"],["R-H-TiTa", "R-H-TaG"],
+   ["L-H-ThC", "L-H-CTr"], ["L-H-CTr", "L-H-FeTi"], ["L-H-TiTa", "L-H-TaG"],["L-H-FeTi", "L-H-TiTa"], ["L-H-TiTa", "L-H-TaG"],
+   ["R-WH", "Notum"], ["L-WH", "Notum"], 
+   ["L-WH", "L-F-ThC"],["L-WH", "L-M-ThC"], ["L-WH", "L-H-ThC"],
+   ["R-WH", "R-F-ThC"],["R-WH", "R-M-ThC"], ["R-WH", "R-H-ThC"],
+   ["L-F-ThC", "R-F-ThC"], ["L-M-ThC", "R-M-ThC"], ["L-H-ThC", "R-H-ThC"]
+]
+
+[angles]
+#L1
+L1A_abduct = ["cross-axis", "L-WH", "L-F-ThC", "L-F-CTr"]
+L1A_flex = ["flex", "Notum", "L-F-ThC", "L-F-CTr"]
+L1A_rot = ["axis", "L-F-ThC", "L-F-CTr", "L-F-FeTi"]
+L1B_flex = ["flex", "L-F-ThC", "L-F-CTr", "L-F-FeTi"]
+L1B_rot = ["axis", "L-F-CTr", "L-F-FeTi", "L-F-TiTa"]
+L1C_flex = ["flex", "L-F-CTr", "L-F-FeTi", "L-F-TiTa"]
+L1C_rot = ["axis", "L-F-FeTi", "L-F-TiTa", "L-F-TaG"]
+L1D_flex = ["flex", "L-F-FeTi", "L-F-TiTa", "L-F-TaG"]
+
+#L2
+L2A_abduct = ["cross-axis", "L-WH", "L-M-ThC", "L-M-CTr"]
+L2A_flex = ["flex", "Notum", "L-M-ThC", "L-M-CTr"]
+L2A_rot = ["axis", "L-M-ThC", "L-M-CTr", "L-M-FeTi"]
+L2B_flex = ["flex", "L-M-ThC", "L-M-CTr", "L-M-FeTi"]
+L2B_rot = ["axis", "L-M-CTr", "L-M-FeTi", "L-M-TiTa"]
+L2C_flex = ["flex", "L-M-CTr", "L-M-FeTi", "L-M-TiTa"]
+L2C_rot = ["axis", "L-M-FeTi", "L-M-TiTa", "L-M-TaG"]
+L2D_flex = ["flex", "L-M-FeTi", "L-M-TiTa", "L-M-TaG"]
+
+#L3
+L3A_abduct = ["cross-axis", "L-WH", "L-H-ThC", "L-H-CTr"]
+L3A_flex = ["flex", "Notum", "L-H-ThC", "L-H-CTr"]
+L3A_rot = ["axis", "L-H-ThC", "L-H-CTr", "L-H-FeTi"]
+L3B_flex = ["flex", "L-H-ThC", "L-H-CTr", "L-H-FeTi"]
+L3B_rot = ["axis", "L-H-CTr", "L-H-FeTi", "L-H-TiTa"]
+L3C_flex = ["flex", "L-H-CTr", "L-H-FeTi", "L-H-TiTa"]
+L3C_rot = ["axis", "L-H-FeTi", "L-H-TiTa", "L-H-TaG"]
+L3D_flex = ["flex", "L-H-FeTi", "L-H-TiTa", "L-H-TaG"]
+
+#R1
+R1A_abduct = ["cross-axis", "R-WH", "R-F-ThC", "R-F-CTr"]
+R1A_flex = ["flex", "Notum", "R-F-ThC", "R-F-CTr"]
+R1A_rot = ["axis", "R-F-ThC", "R-F-CTr", "R-F-FeTi"]
+R1B_flex = ["flex", "R-F-ThC", "R-F-CTr", "R-F-FeTi"]
+R1B_rot = ["axis", "R-F-CTr", "R-F-FeTi", "R-F-TiTa"]
+R1C_flex = ["flex", "R-F-CTr", "R-F-FeTi", "R-F-TiTa"]
+R1C_rot = ["axis", "R-F-FeTi", "R-F-TiTa", "R-F-TaG"]
+R1D_flex = ["flex", "R-F-FeTi", "R-F-TiTa", "R-F-TaG"]
+
+#R2
+R2A_abduct = ["cross-axis", "R-WH", "R-M-ThC", "R-M-CTr"]
+R2A_flex = ["flex", "Notum", "R-M-ThC", "R-M-CTr"]
+R2A_rot = ["axis", "R-M-ThC", "R-M-CTr", "R-M-FeTi"]
+R2B_flex = ["flex", "R-M-ThC", "R-M-CTr", "R-M-FeTi"]
+R2B_rot = ["axis", "R-M-CTr", "R-M-FeTi", "R-M-TiTa"]
+R2C_flex = ["flex", "R-M-CTr", "R-M-FeTi", "R-M-TiTa"]
+R2C_rot = ["axis", "R-M-FeTi", "R-M-TiTa", "R-M-TaG"]
+R2D_flex = ["flex", "R-M-FeTi", "R-M-TiTa", "R-M-TaG"]
+
+#R3
+R3A_abduct = ["cross-axis", "R-WH", "R-H-ThC", "R-H-CTr"]
+R3A_flex = ["flex", "Notum", "R-H-ThC", "R-H-CTr"]
+R3A_rot = ["axis", "R-H-ThC", "R-H-CTr", "R-H-FeTi"]
+R3B_flex = ["flex", "R-H-ThC", "R-H-CTr", "R-H-FeTi"]
+R3B_rot = ["axis", "R-H-CTr", "R-H-FeTi", "R-H-TiTa"]
+R3C_flex = ["flex", "R-H-CTr", "R-H-FeTi", "R-H-TiTa"]
+R3C_rot = ["axis", "R-H-FeTi", "R-H-TiTa", "R-H-TaG"]
+R3D_flex = ["flex", "R-H-FeTi", "R-H-TiTa", "R-H-TaG"]
+
+
+
+
+[filter]
+scale_smooth = 2
+scale_length = 3
+scale_length_weak = 0.5
+reproj_error_threshold = 20
+score_threshold = 0.4
+n_deriv_smooth = 3
+
