@@ -1,9 +1,9 @@
+# -*- coding: utf-8 -*-
 import deeplabcut
 import pandas as pd
 import os
 import glob as glob
 from pathlib import Path
-from utils import load_config
 import utils as utls
 
 def analyze_new(videos_folders_path: Path) -> None:
@@ -58,52 +58,3 @@ def analyze_new(videos_folders_path: Path) -> None:
                 deeplabcut.filterpredictions(config_path, str(single_folder[i]), save_as_csv=True)
 
                 # deeplabcut.create_labeled_video(config_path, [str(single_folder[i])], videotype='.mp4', filtered=True)
-
-
-    
-    # -*- coding: utf-8 -*-
-
-
-def dlc_csv_fix_point(csv:Path, col_name: str = "F-TaG", n: int = 1) -> pd.DataFrame: 
-    """Replace all values in a DEEPLABCUT CSV file for training data with one value. 
-    This is useful for a point that should stay fixed. Missing values are conserved. 
-    Original file is overwritten, old file is saved as FILENAME_bak.
-
-    Parameters
-    ----------
-    csv : Path
-        File path to CSV data from DLC
-    col_name : str, optional
-        Name of the columns, by default "F-TaG"
-    n : int, optional
-        Replace values with nth entry. To replace with the mean of whole column, choose 0, by default 1
-
-    Returns
-    -------
-    df : pd.DataFrame
-        Full dataframe (from DLC CSV) with specified points fixed
-    """
-
-    df = pd.read_csv(csv,header=None)
-    c = df.loc[3:,df.loc[1, :] == col_name].astype(float) # select columns of interests and here only values
-
-    if n > 0:
-        x = c.iloc[n-1, :] # select value (python starts counting at 0)
-    else:
-        x = c.mean() # calculate mean
-        
-    c.where( c.isnull(), x, axis=1, inplace=True) # replace all non-nan values with x
-    print(f'INFO value in {col_name} replaced with {x.values}')
-
-    df.loc[c.index, c.columns] = c # merge back to full dataframe
-    
-    # store backup file
-    # TODO: backup b4 running all preprocessing steps in another function
-    
-    utls.backup_file(csv)
-    
-    return df
-    # overwrite original csv file
-    # df.to_csv(csv, header=None, index=False)
-    # print('INFO file updated {}'.format(csv))
-
