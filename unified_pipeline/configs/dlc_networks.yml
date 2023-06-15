@@ -1,0 +1,19 @@
+network_set2:
+  A: \mpfi.org\public\sb-lab\DLC_3DAnnotations\DLC_networks\2nd_IT\camA_augmented-BidayeLab-2023-01-18
+  B: \mpfi.org\public\sb-lab\DLC_3DAnnotations\DLC_networks\1st_IT\3cam_BEH-BidayeLab-2022-09-16
+  C: \mpfi.org\public\sb-lab\DLC_3DAnnotations\DLC_networks\2nd_IT\camC_augmented-BidayeLab-2023-01-16
+  D: \mpfi.org\public\sb-lab\DLC_3DAnnotations\DLC_networks\2nd_IT\camD_FS34_RN101-BidayeLab-2022-09-20
+  E: \mpfi.org\public\sb-lab\DLC_3DAnnotations\DLC_networks\1st_IT\3cam_BEH-BidayeLab-2022-09-16
+  F: \mpfi.org\public\sb-lab\DLC_3DAnnotations\DLC_networks\2nd_IT\camF_augmented-BidayeLab-2022-11-29
+  # G:  Top-down view ignored, no model
+  H: \mpfi.org\public\sb-lab\DLC_3DAnnotations\DLC_networks\1st_IT\3cam_BEH-BidayeLab-2022-09-16
+
+network_local:        
+  A: C:\Users\ryabinkyj\Documents\testanalyze\DLCModels\camA_augmented-BidayeLab-2023-01-18
+  B: C:\Users\ryabinkyj\Documents\testanalyze\DLCModels\3cam_BEH-BidayeLab-2022-09-16
+  C: C:\DLC\3D_8cam_vid\camC_FS34_RN101-BidayeLab-2022-10-01
+  D: C:\Users\ryabinkyj\Documents\testanalyze\DLCModels\camD_FS34_RN101-BidayeLab-2022-09-20
+  E: C:\Users\ryabinkyj\Documents\testanalyze\DLCModels\3cam_BEH-BidayeLab-2022-09-16
+  F: C:\DLC\3D_8cam_vid\camF_FS34_RN101-BidayeLab-2022-10-01
+  # G: None, # Top-down view ignored, no model
+  H: C:\Users\ryabinkyj\Documents\testanalyze\DLCModels\3cam_BEH-BidayeLab-2022-09-16
