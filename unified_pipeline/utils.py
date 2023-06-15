@@ -1,5 +1,6 @@
 import yaml
 from pathlib import Path
+import pandas as pd
 
 def load_config(path: str):
     """Load config yml as dict.
@@ -20,6 +21,10 @@ def load_config(path: str):
 
 
     return cfg
+
+def load_csv_as_df(csv: Path) -> pd.DataFrame:
+    return pd.read_csv(csv, header=None)
+
 
 def backup_file(path: Path) -> None:
     backup = Path(str(path) + '_backup')

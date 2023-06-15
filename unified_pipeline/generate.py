@@ -4,6 +4,7 @@ import os
 import glob as glob
 from pathlib import Path
 from utils import load_config
+import utils as utls
 
 def analyze_new(videos_folders_path: Path) -> None:
     """Run approTODO: unhardcode into config file priate DLC models on videos in a given directory
@@ -46,18 +47,17 @@ def analyze_new(videos_folders_path: Path) -> None:
                 # Top-down view (Camera G) is ignored 
                 continue
             else:
-                print(f"[INFO] Camera: {cam_type}")
+                print(f"\n[INFO] Camera: {cam_type}")
                 print(f"[INFO] Model path: {model_paths[cam_type]}")
                 print("[INFO] Video file path:", single_folder[i])
                 config_path = os.path.join(model_paths[cam_type], 'config.yaml')
-
-                print(f"config path {config_path}")
+                print(f"[INFO] DLC Config path {config_path}\n")
 
                 deeplabcut.analyze_videos(config_path, str(single_folder[i]), save_as_csv=True)
 
                 deeplabcut.filterpredictions(config_path, str(single_folder[i]), save_as_csv=True)
 
-                deeplabcut.create_labeled_video(config_path, [str(single_folder[i])], videotype='.mp4', filtered=True)
+                # deeplabcut.create_labeled_video(config_path, [str(single_folder[i])], videotype='.mp4', filtered=True)
 
 
     
@@ -99,9 +99,8 @@ def dlc_csv_fix_point(csv:Path, col_name: str = "F-TaG", n: int = 1) -> pd.DataF
     
     # store backup file
     # TODO: backup b4 running all preprocessing steps in another function
-    backup = Path(str(csv) + '_backup')
-    csv.replace(backup) 
-    print(f'INFO backup file saved to {backup}')
+    
+    utls.backup_file(csv)
     
     return df
     # overwrite original csv file
