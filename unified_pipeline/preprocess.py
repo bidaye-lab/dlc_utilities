@@ -136,32 +136,59 @@ def df2hdf(df: pd.DataFrame, path: Path) -> None:
     print(f"[INFO]: Writing to file {hdf}")
     df.to_hdf(hdf, key='df_with_missing', mode='w')
 
-
-def traverse_dirs(directory, path: Path = Path('')):
-    for parent, child in directory.items():
+def traverse_dirs(directory_structure, path: Path = Path('')):
+    for parent, child in directory_structure.items():
         if isinstance(child, dict):
             newpath = (path / parent)
             newpath.mkdir()
             print(str(newpath))
             traverse_dirs(child, newpath) # recursively call to traverse all subdirs
-        elif parent == 'files':
-            if child:
-                for file in child:
+        elif parent == 'files' and child:
+            for file in child:
+                if isinstance(file, Path):
+                    filepath = path / file.name
+                    if not filepath.exists():
+                        print(f"[INFO] path: {path}")
+                        print(f"[INFO] file: {file.name}")
+                        print(f"[INFO] new filepath: {filepath}")
+                        # print(f"moving file {file} to {filepath}")
+                        file.rename(filepath) # move the existing file here
+                else:
                     filepath = path / file
-                    print(str(filepath))
-                    filepath.touch()
+                    if not filepath.exists():
+                        print(f"[INFO] path: {path}")
+                        print(f"[INFO] file: {file}")
+                        print(f"[INFO] new filepath: {filepath}")
+                        # if only file name entered, create at location
+                        filepath.touch()
 
-def gen_anipose_files(parent_dir: Path, structure={}:dict):
+def gen_anipose_files(parent_dir: Path, structure:dict={}):
+    # TODO: generate dynamically N0-Nx etc.
+    project = {}
+    for folder in parent_dir.glob('N[1-9]'):
+        print(f"current folder is {folder.name}")
+        h5_files = []
+        ball_folder = parent_dir / folder / 'Ball' 
+    
+        for file in ball_folder.glob('*.h5'):
+            h5_files.append(file)
+        project[folder.name] = {
+            'pose-3d': {
+                'files': h5_files # h5 files
+            }
+        }
+
+
     network_name = "get from yaml"
-    structure = {
+    if not structure:
+        print("[INFO]: using default anipose structure")
+        # Default file structure
+        structure = {
         'anipose': {    
             'Ball': {
                 f'{network_name}': {
                     'calibration':{'files':[]},
-                    'project': {
-                        # N1-Nx
-                        'files':[]
-                    },
+                    'project': project, # N1-Nx
                     'files':[]
                 },
                 'files': ['config.toml']
@@ -170,27 +197,8 @@ def gen_anipose_files(parent_dir: Path, structure={}:dict):
             'files':[]
         }
     }
-    # (parent_dir / 'anipose').mkdir()
 
-    traverse_dirs(structure)
+    traverse_dirs(structure, parent_dir)
 
-network_name='test-network'
-structure = {
-        'anipose': {
-            'Ball': {
-                f'{network_name}': {
-                    'calibration':{'files':[]},
-                    'project': {
-                        # N1-Nx
-                        'files':['n1','n2','n3']
-                    },
-                    'files':[]
-                },
-                'files': ['config.toml']
-            },
-            'SS': {},
-            'files':[]
-        }
-    }
-# list_directories(structure)
-traverse_dirs(structure, Path(r'C:\Users\ryabinkyj\Documents\testanalyze'))
+path = Path(r"C:\Users\ryabinkyj\Documents\testanalyze\RawData\BIN-1")
+gen_anipose_files(path)
