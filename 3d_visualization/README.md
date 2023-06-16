@@ -26,7 +26,7 @@ python path-to-csv2xyz.py 3Dpose.csv --ball 0.25 1.25 2.5
 ```
 2. Adjust the diameter of the ball "atom" in VMD, by pasting the following in the VMD terminal:
 ```
-mol modstyle 7 0 CPK 33.3 1 100 1
+ball 33
 ```
 Here, 33.3 represents the diameter of the ball "atom".
 To convert the ball diameter from anipose coordinates to VMD, multiply by the scaling factor printed by `csv2xyz.py`.
@@ -47,6 +47,10 @@ For any changes that you make through the GUI, the corresponding `tcl` command w
 Note that all settings are specific for the "fly molecule"; any other actual molecule will most likely look very strange 
 and you would need to restore the original `vmd.rc` file.
 Some may argue that the fly looks strange, though.
+
+When comparing multiple flies, it may be helpful to color each fly differently.
+This can be done by typing `uni COLORID` into the VMD terminal, where `COLORID` is an integer.
+This will apply the color the _top_ fly, which can be selected in the VMD main window.
 
 ## Playing trajectories and making movies
 VMD can be used to view time-dependent, such as protein folding or chemical reactions 
