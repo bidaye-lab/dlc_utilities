@@ -1,3 +1,9 @@
+"""
+anipose.py: Run Anipose commands on DLC predictions to generate Anipose predictions
+"""
+
+__author__ = "Jacob Ryabinky"
+
 import os
 import subprocess
 from pathlib import Path

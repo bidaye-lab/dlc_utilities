@@ -1,10 +1,12 @@
-# -*- coding: utf-8 -*-
+"""
+dlc.py: Run DLC commands on raw data and generate DLC predictions
+"""
+
 import deeplabcut
-import pandas as pd
 import os
 import glob as glob
 from pathlib import Path
-import utils as utls
+import utils 
 
 # DLC Generation
 def analyze_new(videos_folders_path: Path, cfg_path: Path) -> None:
@@ -19,7 +21,7 @@ def analyze_new(videos_folders_path: Path, cfg_path: Path) -> None:
         File path to the config file containing model paths
     """
 
-    cfg = utls.load_config(cfg_path)
+    cfg = utils.load_config(cfg_path)
     model_paths = cfg['network_local'] # network_local is dev
     # For future, make standardized name like 'networks' maybe? Then if mult networks it could be passed as an argument. 
 

@@ -1,10 +1,8 @@
-import utils
-
-# -*- coding: utf-8 -*-
 """
 preprocess.py: various preprocessing functions used to prepare data for anipose (from DLC output)
 """
-__author__ = "Nico Spiller"
+
+__author__ = "Nico Spiller, Jacob Ryabinky"
 
 import pandas as pd
 from pathlib import Path
@@ -138,7 +136,7 @@ def df2hdf(df: pd.DataFrame, path: Path) -> None:
     print(f"[INFO]: Writing to file {hdf}")
     df.to_hdf(hdf, key='df_with_missing', mode='w')
 
-def traverse_dirs(directory_structure: dict, path: Path = Path('')):
+def traverse_dirs(directory_structure: dict, path: Path = Path('')) -> None:
     """Traverse the directory dict structure and generate analagous file structure
 
     All directories are dicts but files are represented with the key 'files' and a list of either file names (with extension) or the full path to an existing file.
@@ -171,13 +169,15 @@ def traverse_dirs(directory_structure: dict, path: Path = Path('')):
                         # if only file name entered, create at location
                         filepath.touch()
 
-def gen_anipose_files(parent_dir: Path, structure:dict={}):
+def gen_anipose_files(parent_dir: Path, network_name: str, structure:dict={}) -> None:
     """Generate the necessary anipose file structure given a parent path and a file structure
 
     Parameters
     ----------
     parent_dir : Path
         Parent directory. This is where anipose folder will be placed
+    network_name : str
+        The name of network used for DLC annotation
     structure : dict, optional
         The file structure represented as a dictionary, by default {}. If left blank, default will be used. The default will be the minimum required for anipose.
     """
@@ -196,9 +196,6 @@ def gen_anipose_files(parent_dir: Path, structure:dict={}):
             }
         }
 
-
-    # TODO: get from yaml code
-    network_name = "get from yaml"
     if not structure:
         print("[INFO]: using default anipose structure")
         # Default file structure
@@ -222,5 +219,3 @@ def gen_anipose_files(parent_dir: Path, structure:dict={}):
 # path = Path(r"C:\Users\ryabinkyj\Documents\testanalyze\RawData\BIN-1")
 # gen_anipose_files(path)
 
-cfg = utils.load_config(r'C:\Users\ryabinkyj\Documents\dlc-utils\unified_pipeline\configs\dlc_networks.yml')
-print(cfg['network_set2'])

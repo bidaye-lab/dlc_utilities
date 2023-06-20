@@ -1,6 +1,9 @@
+__author__ = "Jacob Ryabinky"
+
 import yaml
 from pathlib import Path
 import pandas as pd
+
 
 def load_config(path: str):
     """Load config yml as dict.
