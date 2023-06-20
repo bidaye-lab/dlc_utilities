@@ -30,4 +30,10 @@ def backup_file(path: Path) -> None:
     backup = Path(str(path) + '_backup')
     path.replace(backup) 
     print(f'[INFO] backup file saved to {backup}')
-    
+
+def find_nx_dirs(parent_dir: Path) -> list:
+    dirs = []
+    for n1 in parent_dir.glob('**/N1'):
+        parent = n1.parent
+        dirs.append(parent)
+    return dirs

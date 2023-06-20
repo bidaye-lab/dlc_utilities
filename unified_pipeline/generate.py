@@ -14,9 +14,7 @@ def analyze_new(videos_folders_path: Path) -> None:
     videos_folders_path : Path
         File path to genotype directory with experiment videos
     """
-    # TODO: unhardcode into config file 
-
-
+    # TODO: unhardcode into config file (dlc_networks.yml)
 
     model_paths = {
         'A': r"C:\\Users\ryabinkyj\Documents\testanalyze\DLCModels\camA_augmented-BidayeLab-2023-01-18",

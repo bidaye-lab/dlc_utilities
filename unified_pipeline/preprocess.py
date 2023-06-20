@@ -136,7 +136,19 @@ def df2hdf(df: pd.DataFrame, path: Path) -> None:
     print(f"[INFO]: Writing to file {hdf}")
     df.to_hdf(hdf, key='df_with_missing', mode='w')
 
-def traverse_dirs(directory_structure, path: Path = Path('')):
+def traverse_dirs(directory_structure: dict, path: Path = Path('')):
+    """Traverse the directory dict structure and generate analagous file structure
+
+    All directories are dicts but files are represented with the key 'files' and a list of either file names (with extension) or the full path to an existing file.
+    If the full path is provided, then the existing file will be moved from that location to the location specified in the dictionary structure.
+
+    Parameters
+    ----------
+    directory_structure : dict
+        File structure represented as a dictionary. 
+    path : Path, optional
+        Path to parent directory. The dictionary file structure will be generated such that path/<dict structure>, by default Path('')
+    """
     for parent, child in directory_structure.items():
         if isinstance(child, dict):
             newpath = (path / parent)
@@ -148,29 +160,33 @@ def traverse_dirs(directory_structure, path: Path = Path('')):
                 if isinstance(file, Path):
                     filepath = path / file.name
                     if not filepath.exists():
-                        print(f"[INFO] path: {path}")
-                        print(f"[INFO] file: {file.name}")
-                        print(f"[INFO] new filepath: {filepath}")
-                        # print(f"moving file {file} to {filepath}")
+                        print(f"[INFO] Moving file {file} to {filepath}")
                         file.rename(filepath) # move the existing file here
                 else:
                     filepath = path / file
                     if not filepath.exists():
-                        print(f"[INFO] path: {path}")
-                        print(f"[INFO] file: {file}")
-                        print(f"[INFO] new filepath: {filepath}")
+                        print(f"[INFO] New file created at: {filepath}")
                         # if only file name entered, create at location
                         filepath.touch()
 
 def gen_anipose_files(parent_dir: Path, structure:dict={}):
-    # TODO: generate dynamically N0-Nx etc.
+    """Generate the necessary anipose file structure given a parent path and a file structure
+
+    Parameters
+    ----------
+    parent_dir : Path
+        Parent directory. This is where anipose folder will be placed
+    structure : dict, optional
+        The file structure represented as a dictionary, by default {}. If left blank, default will be used. The default will be the minimum required for anipose.
+    """
+    
+    # Generate `project` folder structure for anipose
     project = {}
-    for folder in parent_dir.glob('N[1-9]'):
-        print(f"current folder is {folder.name}")
+    for folder in parent_dir.glob('N*'): # find all fly folders (N1-Nx)
         h5_files = []
         ball_folder = parent_dir / folder / 'Ball' 
     
-        for file in ball_folder.glob('*.h5'):
+        for file in ball_folder.glob('*.h5'): # Find all .h5 files 
             h5_files.append(file)
         project[folder.name] = {
             'pose-3d': {
@@ -179,6 +195,7 @@ def gen_anipose_files(parent_dir: Path, structure:dict={}):
         }
 
 
+    # TODO: get from yaml code
     network_name = "get from yaml"
     if not structure:
         print("[INFO]: using default anipose structure")
@@ -200,5 +217,5 @@ def gen_anipose_files(parent_dir: Path, structure:dict={}):
 
     traverse_dirs(structure, parent_dir)
 
-path = Path(r"C:\Users\ryabinkyj\Documents\testanalyze\RawData\BIN-1")
-gen_anipose_files(path)
+# path = Path(r"C:\Users\ryabinkyj\Documents\testanalyze\RawData\BIN-1")
+# gen_anipose_files(path)
