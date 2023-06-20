@@ -6,8 +6,10 @@ import glob as glob
 from pathlib import Path
 import utils as utls
 
+
+# DLC Generation
 def analyze_new(videos_folders_path: Path) -> None:
-    """Run approTODO: unhardcode into config file priate DLC models on videos in a given directory
+    """Run appropriate model with DLC on each video
 
     Parameters
     ----------
@@ -56,3 +58,5 @@ def analyze_new(videos_folders_path: Path) -> None:
                 deeplabcut.filterpredictions(config_path, str(single_folder[i]), save_as_csv=True)
 
                 # deeplabcut.create_labeled_video(config_path, [str(single_folder[i])], videotype='.mp4', filtered=True)
+
+
