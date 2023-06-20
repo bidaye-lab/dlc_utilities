@@ -1,3 +1,5 @@
+import utils
+
 # -*- coding: utf-8 -*-
 """
 preprocess.py: various preprocessing functions used to prepare data for anipose (from DLC output)
@@ -219,3 +221,6 @@ def gen_anipose_files(parent_dir: Path, structure:dict={}):
 
 # path = Path(r"C:\Users\ryabinkyj\Documents\testanalyze\RawData\BIN-1")
 # gen_anipose_files(path)
+
+cfg = utils.load_config(r'C:\Users\ryabinkyj\Documents\dlc-utils\unified_pipeline\configs\dlc_networks.yml')
+print(cfg['network_set2'])
