@@ -6,17 +6,24 @@ import glob as glob
 from pathlib import Path
 import utils as utls
 
-
 # DLC Generation
-def analyze_new(videos_folders_path: Path) -> None:
+def analyze_new(videos_folders_path: Path, cfg_path: Path) -> None:
     """Run appropriate model with DLC on each video
 
     Parameters
     ----------
     videos_folders_path : Path
         File path to genotype directory with experiment videos
+    
+    cfg_path : Path
+        File path to the config file containing model paths
     """
-    # TODO: unhardcode into config file (dlc_networks.yml)
+
+    cfg = utls.load_config(cfg_path)
+    model_paths = cfg['network_local'] # network_local is dev
+    # For future, make standardized name like 'networks' maybe? Then if mult networks it could be passed as an argument. 
+
+    """ network_local: 
 
     model_paths = {
         'A': r"C:\\Users\ryabinkyj\Documents\testanalyze\DLCModels\camA_augmented-BidayeLab-2023-01-18",
@@ -28,6 +35,8 @@ def analyze_new(videos_folders_path: Path) -> None:
         'G': None, # Top-down view ignored, no model
         'H':r"C:\\Users\ryabinkyj\Documents\testanalyze\DLCModels\3cam_BEH-BidayeLab-2022-09-16"
     }
+    """
+
    
     video_folders = []
     for folder in videos_folders_path.glob('*/Ball'):
@@ -58,5 +67,4 @@ def analyze_new(videos_folders_path: Path) -> None:
                 deeplabcut.filterpredictions(config_path, str(single_folder[i]), save_as_csv=True)
 
                 # deeplabcut.create_labeled_video(config_path, [str(single_folder[i])], videotype='.mp4', filtered=True)
-
 
