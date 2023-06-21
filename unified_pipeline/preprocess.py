@@ -89,7 +89,7 @@ def dlc_csv_remove_cols(df:pd.DataFrame, start: str = "", end: str = "", ) -> pd
     return df
 
 
-def create_file_path(path: Path) -> Path:
+def create_file_path(path: Path, root: Path) -> Path:
     """Create appropriate filename from a path for each data file in the format GenotypeFlynum-camName, e.g: for camA in the BPN dataset, for fly N1, filename: BPNN1-A
 
     Parameters
@@ -112,13 +112,15 @@ def create_file_path(path: Path) -> Path:
     Fly number - parent of parent of DLC file
     Genotype - Child of root
     """
+    path_rel = path.relative_to(root)
+
     cam_name = str(path.name)[0]
     fly_num = str(path.parent.parent.name).strip()
-    genotype = str(path.parts[2]).strip().replace("-", "").replace("_", "")
+    genotype = str(path_rel.parts[0]).strip().replace("-", "").replace("_", "")
     file_name = genotype + fly_num + "-" + cam_name
     return path.with_name(file_name).with_suffix(path.suffix)
 
-def df2hdf(df: pd.DataFrame, path: Path) -> None:
+def df2hdf(df: pd.DataFrame, path: Path, root: Path = Path(r'\\mpfi.org\public\sb-lab\BallSystem_RawData')) -> None:
     """Convert pandas DF provided to hdf format and save with proper name format
 
     Parameters
@@ -129,12 +131,13 @@ def df2hdf(df: pd.DataFrame, path: Path) -> None:
         Path to the original CSV file
     """
     # Create new file name
-    new_path = create_file_path(path)
+    new_path = create_file_path(path,root)
     hdf = new_path.with_suffix('.h5')
+    print(f'hdf {hdf}')
 
     # save to disk
-    print(f"[INFO]: Writing to file {hdf}")
-    df.to_hdf(hdf, key='df_with_missing', mode='w')
+    # print(f"[INFO]: Writing to file {hdf}")
+    # df.to_hdf(hdf, key='df_with_missing', mode='w')
 
 def traverse_dirs(directory_structure: dict, path: Path = Path('')) -> None:
     """Traverse the directory dict structure and generate analagous file structure
@@ -216,3 +219,8 @@ def gen_anipose_files(parent_dir: Path, network_name: str, structure:dict={}) ->
 
     traverse_dirs(structure, parent_dir)
 
+path1 = Path(r'\\mpfi.org\public\sb-lab\BallSystem_RawData\10_P9_StochasticActivation\\Nov2022\\Left-turners\\N1\\Ball\\A-11182022190648-0000DLC_resnet101_camA_augmentedJan18shuffle1_500000.csv')
+path2 = Path(r'Z:\\BallSystem_RawData\\10_P9_StochasticActivation\\Nov2022\\Left-turners\\N1\\Ball\\A-11182022190648-0000DLC_resnet101_camA_augmentedJan18shuffle1_500000.csv')
+root = Path(r'Z:\BallSystem_RawData')
+df2hdf([], path1)
+df2hdf([], path2, root)
