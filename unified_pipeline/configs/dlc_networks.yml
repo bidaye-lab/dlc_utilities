@@ -1,4 +1,4 @@
-ball:
+Ball:
   name: set2
   A: \mpfi.org\public\sb-lab\DLC_3DAnnotations\DLC_networks\2nd_IT\camA_augmented-BidayeLab-2023-01-18
   B: \mpfi.org\public\sb-lab\DLC_3DAnnotations\DLC_networks\1st_IT\3cam_BEH-BidayeLab-2022-09-16
@@ -9,7 +9,7 @@ ball:
   # G:  Top-down view ignored, no model
   H: \mpfi.org\public\sb-lab\DLC_3DAnnotations\DLC_networks\1st_IT\3cam_BEH-BidayeLab-2022-09-16
 
-# ball:
+# Ball:
 #   name: set2         
 #   A: C:\Users\ryabinkyj\Documents\testanalyze\DLCModels\camA_augmented-BidayeLab-2023-01-18
 #   B: C:\Users\ryabinkyj\Documents\testanalyze\DLCModels\3cam_BEH-BidayeLab-2022-09-16
