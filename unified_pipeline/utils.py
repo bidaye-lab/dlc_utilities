@@ -32,6 +32,11 @@ def load_config(path: str):
 def load_csv_as_df(csv: Path) -> pd.DataFrame:
     return pd.read_csv(csv, header=None)
 
+def get_csvs(path: Path) -> list:
+    csv_paths = []
+    for csv in path.glob("*.csv"):
+        csv_paths.append(csv)
+    return csv_paths
 
 def backup_file(path: Path) -> None:
     backup = Path(str(path) + '_backup')
@@ -42,5 +47,6 @@ def find_nx_dirs(parent_dir: Path) -> list:
     dirs = []
     for n1 in parent_dir.glob('**/N1'):
         parent = n1.parent
-        dirs.append(parent)
+        if parent.name != 'project':
+            dirs.append(parent)
     return dirs
