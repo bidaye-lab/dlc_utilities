@@ -54,6 +54,7 @@ def dlc_csv_fix_point(df:pd.DataFrame, col_name: str = "F-TaG", n: int = 1) -> p
     
     return df
 
+# TODO: rename fns to pds not csv to match I/O
 def dlc_csv_remove_cols(df:pd.DataFrame, start: str = "", end: str = "", ) -> pd.DataFrame:
     """Remove columns in a DEEPLABCUT CSV based on second rows (bodyparts).
         This is useful when certain joints are badly tracked.
@@ -113,7 +114,7 @@ def create_file_path(path: Path) -> Path:
     """
     cam_name = str(path.name)[0]
     fly_num = str(path.parent.parent.name).strip()
-    genotype = str(path.parts[1]).strip().replace("-", "").replace("-", "")
+    genotype = str(path.parts[2]).strip().replace("-", "").replace("_", "")
     file_name = genotype + fly_num + "-" + cam_name
     return path.with_name(file_name).with_suffix(path.suffix)
 
@@ -129,10 +130,9 @@ def df2hdf(df: pd.DataFrame, path: Path) -> None:
     """
     # Create new file name
     new_path = create_file_path(path)
-
+    hdf = new_path.with_suffix('.h5')
 
     # save to disk
-    hdf = new_path.with_suffix('.h5')
     print(f"[INFO]: Writing to file {hdf}")
     df.to_hdf(hdf, key='df_with_missing', mode='w')
 
@@ -215,7 +215,4 @@ def gen_anipose_files(parent_dir: Path, network_name: str, structure:dict={}) ->
     }
 
     traverse_dirs(structure, parent_dir)
-
-# path = Path(r"C:\Users\ryabinkyj\Documents\testanalyze\RawData\BIN-1")
-# gen_anipose_files(path)
 
