@@ -20,10 +20,10 @@ def csv2hdf(csv_path):
     print('INFO: Writing to file {}'.format(hdf))
     df.to_hdf(hdf, key='df_with_missing', mode='w')
 
-def dlc_csv_fix_point(df:pd.DataFrame, col_name: str = "F-TaG", n: int = 1) -> pd.DataFrame: 
-    """Replace all values in a DEEPLABCUT CSV file for training data with one value. 
+def fix_point(df:pd.DataFrame, col_name: str = "F-TaG", n: int = 1) -> pd.DataFrame: 
+    """Replace all values in a DataFrame corresponding to DLC CSV data with one value. 
     This is useful for a point that should stay fixed. Missing values are conserved. 
-    Original file is overwritten, old file is saved as FILENAME_bak.
+    Original file is overwritten.
 
     Parameters
     ----------
@@ -55,7 +55,7 @@ def dlc_csv_fix_point(df:pd.DataFrame, col_name: str = "F-TaG", n: int = 1) -> p
     return df
 
 # TODO: rename fns to pds not csv to match I/O
-def dlc_csv_remove_cols(df:pd.DataFrame, start: str = "", end: str = "", ) -> pd.DataFrame:
+def remove_cols(df:pd.DataFrame, start: str = "", end: str = "", ) -> pd.DataFrame:
     """Remove columns in a DEEPLABCUT CSV based on second rows (bodyparts).
         This is useful when certain joints are badly tracked.
 
@@ -219,8 +219,8 @@ def gen_anipose_files(parent_dir: Path, network_name: str, structure:dict={}) ->
 
     traverse_dirs(structure, parent_dir)
 
-path1 = Path(r'\\mpfi.org\public\sb-lab\BallSystem_RawData\10_P9_StochasticActivation\\Nov2022\\Left-turners\\N1\\Ball\\A-11182022190648-0000DLC_resnet101_camA_augmentedJan18shuffle1_500000.csv')
-path2 = Path(r'Z:\\BallSystem_RawData\\10_P9_StochasticActivation\\Nov2022\\Left-turners\\N1\\Ball\\A-11182022190648-0000DLC_resnet101_camA_augmentedJan18shuffle1_500000.csv')
-root = Path(r'Z:\BallSystem_RawData')
-df2hdf([], path1)
-df2hdf([], path2, root)
+# path1 = Path(r'\\mpfi.org\public\sb-lab\BallSystem_RawData\10_P9_StochasticActivation\\Nov2022\\Left-turners\\N1\\Ball\\A-11182022190648-0000DLC_resnet101_camA_augmentedJan18shuffle1_500000.csv')
+# path2 = Path(r'Z:\\BallSystem_RawData\\10_P9_StochasticActivation\\Nov2022\\Left-turners\\N1\\Ball\\A-11182022190648-0000DLC_resnet101_camA_augmentedJan18shuffle1_500000.csv')
+# root = Path(r'Z:\BallSystem_RawData')
+# df2hdf([], path1)
+# df2hdf([], path2, root)
