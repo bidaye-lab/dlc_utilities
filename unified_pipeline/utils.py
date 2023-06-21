@@ -1,3 +1,7 @@
+"""
+utils.py: Utility, helper functions for DLC/Anipose pipeline
+"""
+
 __author__ = "Jacob Ryabinky"
 
 import yaml
