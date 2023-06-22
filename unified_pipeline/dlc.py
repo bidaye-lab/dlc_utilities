@@ -9,7 +9,7 @@ from pathlib import Path
 import utils 
 
 # DLC Generation
-def analyze_new(videos_folders_path: Path, cfg_path: Path, network_set_name: str) -> None:
+def analyze_new(videos_folders_path: Path, cfg_path: Path) -> None:
     """Run appropriate model with DLC on each video
 
     Parameters
@@ -19,13 +19,10 @@ def analyze_new(videos_folders_path: Path, cfg_path: Path, network_set_name: str
     
     cfg_path : Path
         File path to the config file containing model paths
-
-    network_set_name : Str
-        The name of the network set being used
     """
 
     cfg = utils.load_config(cfg_path)
-    model_paths = cfg['Ball'][network_set_name] # network_local is dev
+    model_paths = cfg['Ball'] # network_local is dev
 
     """ network_local: 
 

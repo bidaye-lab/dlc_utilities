@@ -6,19 +6,7 @@ __author__ = "Nico Spiller, Jacob Ryabinky"
 
 import pandas as pd
 from pathlib import Path
-
-def csv2hdf(csv_path):
-    csv = Path(csv_path)
-
-    # loading CSV into pandas dataframe
-    print('INFO: Reading {}'.format(csv))
-    df = pd.read_csv(csv, index_col=0, header=[0, 1, 2])
-    df.columns.set_levels([df.columns[0][0]], level='scorer')
-
-    # save to disk
-    hdf = csv.with_suffix('.h5')
-    print('INFO: Writing to file {}'.format(hdf))
-    df.to_hdf(hdf, key='df_with_missing', mode='w')
+import utils
 
 def fix_point(df:pd.DataFrame, col_name: str = "F-TaG", n: int = 1) -> pd.DataFrame: 
     """Replace all values in a DataFrame corresponding to DLC CSV data with one value. 
@@ -54,7 +42,6 @@ def fix_point(df:pd.DataFrame, col_name: str = "F-TaG", n: int = 1) -> pd.DataFr
     
     return df
 
-# TODO: rename fns to pds not csv to match I/O
 def remove_cols(df:pd.DataFrame, start: str = "", end: str = "", ) -> pd.DataFrame:
     """Remove columns in a DEEPLABCUT CSV based on second rows (bodyparts).
         This is useful when certain joints are badly tracked.
@@ -136,8 +123,8 @@ def df2hdf(df: pd.DataFrame, path: Path, root: Path = Path(r'\\mpfi.org\public\s
     print(f'hdf {hdf}')
 
     # save to disk
-    # print(f"[INFO]: Writing to file {hdf}")
-    # df.to_hdf(hdf, key='df_with_missing', mode='w')
+    print(f"[INFO]: Writing to file {hdf}")
+    df.to_hdf(hdf, key='df_with_missing', mode='w')
 
 def traverse_dirs(directory_structure: dict, path: Path = Path('')) -> None:
     """Traverse the directory dict structure and generate analagous file structure
@@ -172,15 +159,15 @@ def traverse_dirs(directory_structure: dict, path: Path = Path('')) -> None:
                         # if only file name entered, create at location
                         filepath.touch()
 
-def gen_anipose_files(parent_dir: Path, network_name: str, structure:dict={}) -> None:
+def gen_anipose_files(parent_dir: Path, p_network_cfg: Path, structure:dict={}) -> None:
     """Generate the necessary anipose file structure given a parent path and a file structure
 
     Parameters
     ----------
     parent_dir : Path
         Parent directory. This is where anipose folder will be placed
-    network_name : str
-        The name of network used for DLC annotation
+    p_network_cfg: Path 
+        File path to the config file containing DLC model paths
     structure : dict, optional
         The file structure represented as a dictionary, by default {}. If left blank, default will be used. The default will be the minimum required for anipose.
     """
@@ -198,6 +185,10 @@ def gen_anipose_files(parent_dir: Path, network_name: str, structure:dict={}) ->
                 'files': h5_files # h5 files
             }
         }
+    
+    # Get network set name
+    cfg = utils.load_cfg(p_network_cfg)
+    network_set_name = cfg['Ball']['name']
 
     if not structure:
         print("[INFO]: using default anipose structure")
@@ -205,7 +196,7 @@ def gen_anipose_files(parent_dir: Path, network_name: str, structure:dict={}) ->
         structure = {
         'anipose': {    
             'Ball': {
-                f'{network_name}': {
+                f'{network_set_name}': {
                     'calibration':{'files':[]},
                     'project': project, # N1-Nx
                     'files':[]
@@ -218,9 +209,3 @@ def gen_anipose_files(parent_dir: Path, network_name: str, structure:dict={}) ->
     }
 
     traverse_dirs(structure, parent_dir)
-
-# path1 = Path(r'\\mpfi.org\public\sb-lab\BallSystem_RawData\10_P9_StochasticActivation\\Nov2022\\Left-turners\\N1\\Ball\\A-11182022190648-0000DLC_resnet101_camA_augmentedJan18shuffle1_500000.csv')
-# path2 = Path(r'Z:\\BallSystem_RawData\\10_P9_StochasticActivation\\Nov2022\\Left-turners\\N1\\Ball\\A-11182022190648-0000DLC_resnet101_camA_augmentedJan18shuffle1_500000.csv')
-# root = Path(r'Z:\BallSystem_RawData')
-# df2hdf([], path1)
-# df2hdf([], path2, root)
