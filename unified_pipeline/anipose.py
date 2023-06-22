@@ -31,8 +31,8 @@ def run(parent_dir: Path) -> None:
             p_pose_2d_filtered = p_n1 / 'pose-2d-filtered'
             p_angles = p_n1 / 'angles'
 
-            if p_pose_3d.exists() or p_pose_2d_filtered.exists() or p_angles.exists():
-                print(f'[INFO] Anipose generated files present, skipping {p_network}')
+            if p_pose_3d.exists() and p_pose_2d_filtered.exists() and p_angles.exists():
+                print(f'[INFO] All anipose generated files present, skipping {p_network}')
                 continue
 
             # check if anipose directory is valid
