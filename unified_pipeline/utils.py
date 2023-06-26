@@ -34,7 +34,7 @@ def load_csv_as_df(csv: Path) -> pd.DataFrame:
 
 def get_csvs(path: Path) -> list:
     csv_paths = []
-    for csv in path.glob("*.csv"):
+    for csv in path.glob("**/*.csv"):
         csv_paths.append(csv)
     return csv_paths
 

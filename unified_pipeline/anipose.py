@@ -18,7 +18,6 @@ def run_anipose_commands():
             print(f'[ERROR] Command {command} failed with return code {process.returncode}')
             break
 
-# TODO: Only run if anipose has not been run on it before
 def run(parent_dir: Path) -> None:
     nx_dirs = utils.find_nx_dirs(parent_dir)
     for nxdir in nx_dirs:

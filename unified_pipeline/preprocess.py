@@ -4,6 +4,8 @@ preprocess.py: various preprocessing functions used to prepare data for anipose 
 
 __author__ = "Nico Spiller, Jacob Ryabinky"
 
+import pickle
+pickle.HIGHEST_PROTOCOL = 4
 import pandas as pd
 from pathlib import Path
 import utils
@@ -181,13 +183,14 @@ def gen_anipose_files(parent_dir: Path, p_network_cfg: Path, structure:dict={}) 
         for file in ball_folder.glob('*.h5'): # Find all .h5 files 
             h5_files.append(file)
         project[folder.name] = {
-            'pose-3d': {
+            'pose-2d': {
                 'files': h5_files # h5 files
-            }
+            },
+            'videos-raw':{}
         }
     
     # Get network set name
-    cfg = utils.load_cfg(p_network_cfg)
+    cfg = utils.load_config(p_network_cfg)
     network_set_name = cfg['Ball']['name']
 
     if not structure:
@@ -199,9 +202,8 @@ def gen_anipose_files(parent_dir: Path, p_network_cfg: Path, structure:dict={}) 
                 f'{network_set_name}': {
                     'calibration':{'files':[]},
                     'project': project, # N1-Nx
-                    'files':[]
+                    'files':['config.toml']
                 },
-                'files': ['config.toml']
             },
             'SS': {},
             'files':[]

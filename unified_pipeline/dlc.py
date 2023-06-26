@@ -63,9 +63,8 @@ def analyze_new(videos_folders_path: Path, cfg_path: Path) -> None:
                 config_path = os.path.join(model_paths[cam_type], 'config.yaml')
                 print(f"[INFO] DLC Config path {config_path}\n")
 
-                deeplabcut.analyze_videos(config_path, str(single_folder[i]), save_as_csv=True)
-
-                deeplabcut.filterpredictions(config_path, str(single_folder[i]), save_as_csv=True)
+                deeplabcut.analyze_videos(config_path, str(video_file), save_as_csv=True)
+                deeplabcut.filterpredictions(config_path, str(video_file), save_as_csv=True)
 
                 # deeplabcut.create_labeled_video(config_path, [str(single_folder[i])], videotype='.mp4', filtered=True)
 
