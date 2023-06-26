@@ -103,6 +103,7 @@ def create_file_path(path: Path, root: Path) -> Path:
     """
     path_rel = path.relative_to(root)
 
+
     cam_name = str(path.name)[0]
     fly_num = str(path.parent.parent.name).strip()
     genotype = str(path_rel.parts[0]).strip().replace("-", "").replace("_", "")
@@ -120,7 +121,14 @@ def df2hdf(df: pd.DataFrame, path: Path, root: Path = Path(r'\\mpfi.org\public\s
         Path to the original CSV file
     """
     # Create new file name
-    new_path = create_file_path(path,root)
+    try:
+        new_path = create_file_path(path,root)
+    except ValueError:
+        print("[ERROR] Incorrect root.\nYour root path does not match with the parent directory provided, please make sure that you provided the correct root. \
+        \nThe root should be the beginning of your parent directory path up to the folder containing raw data, e.g `\mpfi.org\public\sb-lab\BallSystem_RawData`\n")
+        return -1
+ 
+
     hdf = new_path.with_suffix('.h5')
     print(f'hdf {hdf}')
 
@@ -144,20 +152,23 @@ def traverse_dirs(directory_structure: dict, path: Path = Path('')) -> None:
     for parent, child in directory_structure.items():
         if isinstance(child, dict):
             newpath = (path / parent)
-            newpath.mkdir()
-            print(str(newpath))
-            traverse_dirs(child, newpath) # recursively call to traverse all subdirs
+            if not newpath.exists():
+                print(f"[INFO] Creating new directory {newpath}")
+                newpath.mkdir()
+                traverse_dirs(child, newpath) # recursively call to traverse all subdirs
+            else:
+                print(f"[WARNING] Skipping creating {newpath} because it already exists")
         elif parent == 'files' and child:
             for file in child:
                 if isinstance(file, Path):
                     filepath = path / file.name
                     if not filepath.exists():
                         print(f"[INFO] Moving file {file} to {filepath}")
-                        file.rename(filepath) # move the existing file here
+                        file.rename(filepath) # if file path entered, move the existing file here
                 else:
                     filepath = path / file
                     if not filepath.exists():
-                        print(f"[INFO] New file created at: {filepath}")
+                        print(f"[INFO] Creating new file at: {filepath}")
                         # if only file name entered, create at location
                         filepath.touch()
 
@@ -176,11 +187,14 @@ def gen_anipose_files(parent_dir: Path, p_network_cfg: Path, structure:dict={}) 
     
     # Generate `project` folder structure for anipose
     project = {}
+    print(f"[INFO] Generating `project` folder structure")
     for folder in parent_dir.glob('N*'): # find all fly folders (N1-Nx)
+        print("[INFO] Searching {folder.name} directory")
         h5_files = []
         ball_folder = parent_dir / folder / 'Ball' 
     
         for file in ball_folder.glob('*.h5'): # Find all .h5 files 
+            print(f"[INFO] Found HDF file {file}")
             h5_files.append(file)
         project[folder.name] = {
             'pose-2d': {
@@ -192,9 +206,10 @@ def gen_anipose_files(parent_dir: Path, p_network_cfg: Path, structure:dict={}) 
     # Get network set name
     cfg = utils.load_config(p_network_cfg)
     network_set_name = cfg['Ball']['name']
+    print(f"[INFO] Using network set name {network_set_name}")
 
     if not structure:
-        print("[INFO]: using default anipose structure")
+        print("[INFO] Using default anipose file structure")
         # Default file structure
         structure = {
         'anipose': {    

@@ -19,11 +19,14 @@ def run_anipose_commands():
             break
 
 def run(parent_dir: Path) -> None:
+    num_run = 0 # number of times anipose has been run (essentially number of dirs modified)
     nx_dirs = utils.find_nx_dirs(parent_dir)
     for nxdir in nx_dirs:
         p_anipose = nxdir / 'anipose' 
+        print(f"[INFO] Found anipose directory {p_anipose}")
         for p_n1 in p_anipose.glob('**/N1'):
             p_network = p_n1.parent.parent # anipose\Ball\<name of network set>\project\N1
+            print(f"[INFO] Name of network set (directory): `{p_network.name}`")
 
             # check if anipose has been run
             p_pose_3d = p_n1 / 'pose-3d'
@@ -46,7 +49,6 @@ def run(parent_dir: Path) -> None:
             print(f'[INFO] Changing directory to {p_network}')
             os.chdir(p_network)
             run_anipose_commands()
+            num_run+=1
             print(f'[INFO] Finished running anipose in {p_network}')
-
-# path = Path(r'C:\Users\ryabinkyj\Documents\testanalyze\RawData\BIN-1')
-# run(path)
+    print(f"Finished running anipose in {num_run} projects...")
