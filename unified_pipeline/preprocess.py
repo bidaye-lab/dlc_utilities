@@ -8,6 +8,7 @@ import pickle
 pickle.HIGHEST_PROTOCOL = 4
 import pandas as pd
 from pathlib import Path
+import shutil
 import utils
 
 def fix_point(df:pd.DataFrame, col_name: str = "F-TaG", n: int = 1) -> pd.DataFrame: 
@@ -158,7 +159,7 @@ def traverse_dirs(directory_structure: dict, path: Path = Path('')) -> None:
                 traverse_dirs(child, newpath) # recursively call to traverse all subdirs
             else:
                 print(f"[WARNING] Skipping creating {newpath} because it already exists")
-        elif parent == 'files' and child:
+        elif parent == 'filesmv' and child:
             for file in child:
                 if isinstance(file, Path):
                     filepath = path / file.name
@@ -166,13 +167,25 @@ def traverse_dirs(directory_structure: dict, path: Path = Path('')) -> None:
                         print(f"[INFO] Moving file {file} to {filepath}")
                         file.rename(filepath) # if file path entered, move the existing file here
                 else:
-                    filepath = path / file
+                    print(f"[WARNING] Skipping {file}, all files in `filesmv` should be paths")
+        elif parent == 'filescp' and child:
+            for file in child:
+                if isinstance(file, Path):
+                    filepath = path / file.name
                     if not filepath.exists():
-                        print(f"[INFO] Creating new file at: {filepath}")
-                        # if only file name entered, create at location
-                        filepath.touch()
+                        print(f"[INFO] Copying file {file} to {filepath}")
+                        shutil.copy(file, filepath)
+                else:
+                    print(f"[WARNING] Skipping {file}, all files in `filescp` should be paths")
+        elif parent == 'filesmk' and child:
+            for file in child:
+                filepath = path / file
+                if not filepath.exists():
+                    print(f"[INFO] Creating new file at: {filepath}")
+                    # if only file name entered, create at location
+                    filepath.touch()
 
-def gen_anipose_files(parent_dir: Path, p_network_cfg: Path, structure:dict={}) -> None:
+def gen_anipose_files(parent_dir: Path, p_network_cfg: Path, p_calibration: Path, p_detection: Path, p_anipose_config: Path, structure:dict={}) -> None:
     """Generate the necessary anipose file structure given a parent path and a file structure
 
     Parameters
@@ -181,8 +194,19 @@ def gen_anipose_files(parent_dir: Path, p_network_cfg: Path, structure:dict={}) 
         Parent directory. This is where anipose folder will be placed
     p_network_cfg: Path 
         File path to the config file containing DLC model paths
+    p_calibration: Path
+        File path to calibration.toml
+    p_detection: Path
+        File path to detections.pickle
+    p_anipose_config:
+        File path to config.toml 
     structure : dict, optional
         The file structure represented as a dictionary, by default {}. If left blank, default will be used. The default will be the minimum required for anipose.
+
+        Dictionary mirrors file structure with directories represented by other dictionaries and files represented by lists with three types of keys:\n
+             1. `filesmv` - this key takes a list of Path objects and moves the files from the path provided to the new path specified in the dict structure
+             2. `filescp` - this key takes a list of Path objects and copies the files from the path provided to the new path specified in the dict structure
+             3. `filesmk` - this key takes a list of strings that specify the name and extension of a new file that will be created at the path specified in the dict structure
     """
     
     # Generate `project` folder structure for anipose
@@ -198,7 +222,7 @@ def gen_anipose_files(parent_dir: Path, p_network_cfg: Path, structure:dict={}) 
             h5_files.append(file)
         project[folder.name] = {
             'pose-2d': {
-                'files': h5_files # h5 files
+                'filesmv': h5_files # h5 files
             },
             'videos-raw':{}
         }
@@ -215,13 +239,12 @@ def gen_anipose_files(parent_dir: Path, p_network_cfg: Path, structure:dict={}) 
         'anipose': {    
             'Ball': {
                 f'{network_set_name}': {
-                    'calibration':{'files':[]},
+                    'calibration':{'filescp':[p_calibration, p_detection]},
                     'project': project, # N1-Nx
-                    'files':['config.toml']
+                    'filescp':[p_anipose_config]
                 },
             },
             'SS': {},
-            'files':[]
         }
     }
 
