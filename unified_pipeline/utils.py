@@ -173,10 +173,10 @@ def get_anipose_calibration_files(p_calibration_target: Path, p_calib_timeline: 
     if p_calibration_files: # calibration file dir found
         p_detection_pickle = next(p_calibration_files.glob('**/detections.pickle'))
         p_calibration_toml = next(p_calibration_files.glob('**/calibration.toml')) 
-        if str(p_project_dir) in board_paths:
+        if str(p_project_dir) in board_paths: # TODO: need to also check if a subdir of the directory in the paths list
             output_files.append(p_detection_pickle)
             output_files.append(p_calibration_toml)
-        elif str(p_project_dir) in fly_paths:
+        elif str(p_project_dir) in fly_paths:# TODO: need to also check if a subdir of the directory in the paths list
             output_files.append(p_detection_pickle)
         else:
             print("[ERROR] Invalid calibration type")
