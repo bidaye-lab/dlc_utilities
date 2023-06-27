@@ -148,16 +148,25 @@ def get_date_time(p_project_dir: Path) -> datetime:
 
     return to_dt(date_time_string, True) 
 
-
-def get_anipose_calibration_files(p_calibration_target: Path, p_calib_timeline: Path, p_project_dir: Path) -> list:
-    p_calibration_files = ""
-   
+def get_calibration_type(p_calibration_target: Path, p_project_dir: Path):
     calibration_target_config = load_config(p_calibration_target)
-    calibration_timeline = load_config(p_calib_timeline)
 
     board_paths = calibration_target_config['board'] # all the file paths that use a board calibration
     fly_paths = calibration_target_config['fly'] # all the file paths that use a fly calibration
 
+    if any(str(p_project_dir) == path or Path(path) in p_project_dir.parents  for path in board_paths):
+        return "board"
+    elif any(str(p_project_dir) == path or Path(path) in p_project_dir.parents  for path in fly_paths):
+        return "fly"
+    else:
+        return None
+
+def get_anipose_calibration_files(p_calibration_target: Path, p_calib_timeline: Path, p_project_dir: Path) -> list:
+    p_calibration_files = ""
+   
+    calibration_timeline = load_config(p_calib_timeline)
+
+   
     project_date = get_date_time(p_project_dir)
 
     for path, daterange in calibration_timeline.items():
@@ -171,12 +180,13 @@ def get_anipose_calibration_files(p_calibration_target: Path, p_calib_timeline: 
 
     output_files=[]
     if p_calibration_files: # calibration file dir found
+        calibration_type = get_calibration_type(p_calibration_target, p_project_dir)
         p_detection_pickle = next(p_calibration_files.glob('**/detections.pickle'))
         p_calibration_toml = next(p_calibration_files.glob('**/calibration.toml')) 
-        if any(str(p_project_dir) == path or Path(path) in p_project_dir.parents  for path in board_paths):
+        if calibration_type == 'board':
             output_files.append(p_detection_pickle)
             output_files.append(p_calibration_toml)
-        elif any(str(p_project_dir) == path or Path(path) in p_project_dir.parents  for path in fly_paths):
+        elif calibration_type == 'fly':
             output_files.append(p_detection_pickle)
         else:
             print(f"[ERROR] Invalid calibration type or calibration type not specified in `{p_calibration_target}")
@@ -184,3 +194,4 @@ def get_anipose_calibration_files(p_calibration_target: Path, p_calib_timeline: 
         print("[ERROR] No matching calibration directory for video files")
 
     return output_files
+
