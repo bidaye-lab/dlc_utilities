@@ -104,7 +104,7 @@ def df2hdf(df: pd.DataFrame, path: Path, root: Path = Path(r'\\mpfi.org\public\s
     df.to_hdf(hdf, key='df_with_missing', mode='w')
 
 
-def gen_anipose_files(parent_dir: Path, p_network_cfg: Path, p_calibration: Path, p_detection: Path, p_anipose_config: Path, structure:dict={}) -> None:
+def gen_anipose_files(parent_dir: Path, p_network_cfg: Path, p_calibration: Path, p_detection: Path, p_anipose_config: Path, p_calibration_target, p_calibration_timeline:Path, structure:dict={}) -> None:
     """Generate the necessary anipose file structure given a parent path and a file structure
 
     Parameters
