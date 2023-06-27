@@ -104,7 +104,7 @@ def df2hdf(df: pd.DataFrame, path: Path, root: Path = Path(r'\\mpfi.org\public\s
     df.to_hdf(hdf, key='df_with_missing', mode='w')
 
 
-def gen_anipose_files(parent_dir: Path, p_network_cfg: Path, p_calibration: Path, p_detection: Path, p_anipose_config: Path, p_calibration_target, p_calibration_timeline:Path, structure:dict={}) -> None:
+def gen_anipose_files(parent_dir: Path, p_network_cfg: Path, p_anipose_config: Path, p_calibration_target: Path, p_calibration_timeline: Path, structure:dict={}) -> None:
     """Generate the necessary anipose file structure given a parent path and a file structure
 
     Parameters
@@ -127,10 +127,14 @@ def gen_anipose_files(parent_dir: Path, p_network_cfg: Path, p_calibration: Path
              2. `filescp` - this key takes a list of Path objects and copies the files from the path provided to the new path specified in the dict structure
              3. `filesmk` - this key takes a list of strings that specify the name and extension of a new file that will be created at the path specified in the dict structure
     """
+
+    # Get anipose calib files based on configs set
+    print(f"[INFO] Getting Anipose calibration files...")
+    calibration_files = utils.get_anipose_calibration_files(p_calibration_target, p_calibration_timeline, parent_dir)
     
     # Generate `project` folder structure for anipose
     project = {}
-    print(f"[INFO] Generating `project` folder structure")
+    print(f"[INFO] Generating `project` folder structure...")
     for folder in parent_dir.glob('N*'): # find all fly folders (N1-Nx)
         print("[INFO] Searching {folder.name} directory")
         h5_files = []
@@ -158,7 +162,7 @@ def gen_anipose_files(parent_dir: Path, p_network_cfg: Path, p_calibration: Path
         'anipose': {    
             'Ball': {
                 f'{network_set_name}': {
-                    'calibration':{'filescp':[p_calibration, p_detection]},
+                    'calibration':{'filescp':calibration_files},
                     'project': project, # N1-Nx
                     'filescp':[p_anipose_config]
                 },

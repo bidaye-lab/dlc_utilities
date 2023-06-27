@@ -19,6 +19,13 @@ def run_anipose_commands():
             break
 
 def run(parent_dir: Path) -> None:
+    """Find all valid anipose projects and run anipose processing commands on that data.
+
+    Parameters
+    ----------
+    parent_dir : Path
+        Parent directory of the anipose project(s)
+    """
     num_run = 0 # number of times anipose has been run (essentially number of dirs modified)
     nx_dirs = utils.find_nx_dirs(parent_dir)
     for nxdir in nx_dirs:
