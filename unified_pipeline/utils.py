@@ -8,6 +8,8 @@ import yaml
 from pathlib import Path
 import shutil
 import pandas as pd
+from datetime import datetime
+from datetimerange import DateTimeRange
 
 
 def load_config(path: str):
@@ -131,3 +133,61 @@ def traverse_dirs(directory_structure: dict, path: Path = Path('')) -> None:
                     print(f"[INFO] Creating new file at: {filepath}")
                     # if only file name entered, create at location
                     filepath.touch()
+
+def to_dt(date_string: str, time: bool = False) -> datetime:
+    match="%m%d%Y"
+    if time:
+        match = "%m%d%Y%H%M%S"
+    return datetime.strptime(date_string, match)
+
+def get_date_time(p_project_dir: Path) -> datetime:
+    mp4 = next(p_project_dir.glob('**/*.mp4')) # the first mp4 found, used to get date range
+    # name format B-04182023151131-0000
+    mp4_name = mp4.name 
+    date_time_string= mp4_name.split('-')[1]
+
+    return to_dt(date_time_string, True) 
+
+
+def get_anipose_calibration_files(p_calibration_target: Path, p_calib_timeline: Path, p_project_dir: Path) -> list:
+    p_calibration_files = ""
+   
+    calibration_target_config = load_config(p_calibration_target)
+    calibration_timeline = load_config(p_calib_timeline)
+
+    board_paths = calibration_target_config['board'] # all the file paths that use a board calibration
+    fly_paths = calibration_target_config['fly'] # all the file paths that use a fly calibration
+
+    project_date = get_date_time(p_project_dir)
+
+    for path, daterange in calibration_timeline.items():
+        start = daterange.split("-")[0].strip()
+        end =  daterange.split("-")[1].strip()
+        dt_start = to_dt(start)
+        dt_end = to_dt(end)
+        dt_daterange = DateTimeRange(dt_start, dt_end)
+        if project_date in dt_daterange: # determine if the project falls in the date range
+            p_calibration_files = Path(path)
+
+    output_files=[]
+    if p_calibration_files: # calibration file dir found
+        p_detection_pickle = next(p_calibration_files.glob('**/detections.pickle'))
+        p_calibration_toml = next(p_calibration_files.glob('**/calibration.toml')) 
+        if str(p_project_dir) in board_paths:
+            output_files.append(p_detection_pickle)
+            output_files.append(p_calibration_toml)
+        elif str(p_project_dir) in fly_paths:
+            output_files.append(p_detection_pickle)
+        else:
+            print("[ERROR] Invalid calibration type")
+    else:
+        print("[ERROR] No matching calibration directory for video files")
+
+    return output_files
+
+
+path =Path(r"Z:\BallSystem_RawData\29_P9_DiffOpsins\5xCsChrimson-P9-1540")
+calib_path=Path(r"Z:\DLC_pipeline_Dummy\7_config_files\calibration_target.yml")
+calib_timeline = Path(r"Z:\DLC_pipeline_Dummy\7_config_files\calib_timeline.yml")
+print(*get_anipose_calibration_files(calib_path, calib_timeline, path))
+# get_date(path)
