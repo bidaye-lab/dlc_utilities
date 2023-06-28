@@ -141,8 +141,9 @@ def gen_anipose_files(parent_dir: Path, p_network_cfg: Path, p_anipose_config: P
         ball_folder = parent_dir / folder / 'Ball' 
     
         for file in ball_folder.glob('*.h5'): # Find all .h5 files 
-            print(f"[INFO] Found HDF file {file}")
-            h5_files.append(file)
+            if 'filtered' in file.name:
+                print(f"[INFO] Found HDF file {file}")
+                h5_files.append(file)
         project[folder.name] = {
             'pose-2d': {
                 'filesmv': h5_files # h5 files
