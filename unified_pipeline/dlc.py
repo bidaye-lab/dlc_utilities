@@ -40,7 +40,7 @@ def analyze_new(videos_folders_path: Path, cfg_path: Path) -> None:
 
    
     video_folders = []
-    for folder in videos_folders_path.glob('*/Ball'):
+    for folder in videos_folders_path.glob('**/Ball'):
         video_folders.append(folder)
     
     for video_folder in video_folders:
