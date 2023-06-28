@@ -67,13 +67,13 @@ def remove_cols(df:pd.DataFrame, start: str = "", end: str = "", ) -> pd.DataFra
     if start:
         cols = df.loc[ :, df.loc[1, :].apply(lambda x: x.startswith(start)) ].columns
         df = df.drop(columns=cols)
-        print('[INFO] removed {} columns starting with'.format(len(cols), start))
+        print('[INFO] removed {} columns starting with {}'.format(len(cols), start))
 
     # filter columns based on end of name
     if end:
         cols = df.loc[ :, df.loc[1, :].apply(lambda x: x.endswith(end)) ].columns
         df = df.loc[:, cols]
-        print('[INFO] removed {} columns ending with'.format(len(cols), end))
+        print('[INFO] removed {} columns ending with {}'.format(len(cols), end))
 
     return df
 

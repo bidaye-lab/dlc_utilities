@@ -60,7 +60,8 @@ def analyze_new(videos_folders_path: Path, cfg_path: Path) -> None:
                 print(f"\n[INFO] Camera: {cam_type}")
                 print(f"[INFO] Model path: {model_paths[cam_type]}")
                 print("[INFO] Video file path:", single_folder[i])
-                config_path = os.path.join(model_paths[cam_type], 'config.yaml')
+                # config_path = os.path.join(model_paths[cam_type], 'config.yaml')
+                config_path = Path(model_paths[cam_type]) / 'config.yaml'
                 print(f"[INFO] DLC Config path {config_path}\n")
 
                 deeplabcut.analyze_videos(config_path, str(video_file), save_as_csv=True)
