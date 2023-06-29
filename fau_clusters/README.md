@@ -32,7 +32,7 @@ For intermediate storage of larger datasets, use the directory `/mnt/beegfs/scra
 This does not have a quota, but will be deleted if the entire cluster runs out of storage space.
 
 Using the web browser-based file explorer and command line can become cumbersome for routine data pipelines.
-The [FAU HPC](https://hpc.fau.edu/2013/07/20/transferring-files/) website explains possibilities to access the clusters.
+The [FAU HPC](https://hpc.fau.edu/2013/07/20/transferring-files/) website explains possibilities transfer data from and to the cluster.
 
 ## Submitting DLC jobs
 The clusters pool many computational resources and make them available to many users simultaneously.
