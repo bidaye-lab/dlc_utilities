@@ -118,7 +118,6 @@ def df2hdf(df: pd.DataFrame, csv_path: Path, write_path: Path, root: Path = Path
     # Create new file name
     try:
         file_name = utils.create_file_name(csv_path,root)
-        # TODO: generate file path
     except ValueError:
         print("[ERROR] Incorrect root.\nYour root path does not match with the parent directory provided, please make sure that you provided the correct root. \
         \nThe root should be the beginning of your parent directory path up to the folder containing raw data, e.g `\mpfi.org\public\sb-lab\BallSystem_RawData`\n")
@@ -250,7 +249,7 @@ def gen_anipose_files(parent_dir: Path, p_network_cfg: Path, p_anipose_config: P
                 f'{network_set_name}': {
                     'calibration':{'filescp':calibration_files},
                     'project': project, # N1-Nx
-                    'filescp':[p_anipose_config]
+                    'filescp':[p_anipose_config.with_name('config.toml')]
                 },
             },
             'SS': {},
