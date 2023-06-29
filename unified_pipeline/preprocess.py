@@ -145,12 +145,13 @@ def traverse_dirs(directory_structure: dict, path: Path = Path('')) -> None:
                 else:
                     print(f"[WARNING] Skipping {file}, all files in `filescp` should be paths")
         elif parent == 'filescv':
-            # for df, csv_path in child:
-            #     # The DF should only be written to the Nx folder it was taken from, 
-            #     # check that DF original Nx folder matches the current path
-            #     csv_nx = csv_path.parent.parent
-            #     print(f" the current Nx being traversed is {path.parent.parent.name}")
-            #     # df2hdf()
+            for df, csv_path in child:
+                # The DF should only be written to the Nx folder it was taken from, 
+                # check that DF original Nx folder matches the current path
+                csv_nx = csv_path.parent.parent.name
+                current_nx_dir = path.parent.name # Nx dir currently being traversed
+                if csv_nx == current_nx_dir:
+                    df2hdf(df, csv_path)
             print(f" the current Nx being traversed is {path.parent.name}")
         elif parent == 'filesmk' and child:
             for file in child:
@@ -186,9 +187,7 @@ def gen_anipose_files(parent_dir: Path, p_network_cfg: Path, p_anipose_config: P
 
     # Get anipose calib files based on configs set
     print(f"[INFO] Getting Anipose calibration files...")
-    # calibration_files = utils.get_anipose_calibration_files(p_calibration_target, p_calibration_timeline, parent_dir)
-    print("[DEV] SETTING CALIB FILES TO BLANK FOR DEV")
-    calibration_files = []
+    calibration_files = utils.get_anipose_calibration_files(p_calibration_target, p_calibration_timeline, parent_dir)
     
     # Generate `project` folder structure for anipose
     project = {}
@@ -210,11 +209,8 @@ def gen_anipose_files(parent_dir: Path, p_network_cfg: Path, p_anipose_config: P
         }
     
     # Get network set name
-    # cfg = utils.load_config(p_network_cfg)
-    print("[DEV] SETTING CFG BLANK")
-    print("[DEV] SETTING NETWORK NAME TO TEST")
-    # network_set_name = cfg['Ball']['name']
-    network_set_name = "test"
+    cfg = utils.load_config(p_network_cfg)
+    network_set_name = cfg['Ball']['name']
     print(f"[INFO] Using network set name {network_set_name}")
     if not structure:
         print("[INFO] Using default anipose file structure")
@@ -233,8 +229,3 @@ def gen_anipose_files(parent_dir: Path, p_network_cfg: Path, p_anipose_config: P
     }
 
     traverse_dirs(structure, parent_dir)
-
-    # p_anipose = parent_dir / 'anipose'
-
-
-gen_anipose_files(Path(r"C:\Users\ryabinkyj\Documents\testanalyze\RawData\BIN-1"), "", "", "", "", [])

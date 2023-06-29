@@ -147,8 +147,3 @@ def get_anipose_calibration_files(p_calibration_target: Path, p_calib_timeline: 
         print("[ERROR] No matching calibration directory for video files")
 
     return output_files
-
-path =Path(r"Z:\BallSystem_RawData\29_P9_DiffOpsins\5xCsChrimson-P9-1540")
-calib_path=Path(r"Z:\DLC_pipeline_Dummy\7_config_files\calibration_target.yml")
-calib_timeline = Path(r"Z:\DLC_pipeline_Dummy\7_config_files\calib_timeline.yml")
-print(*get_anipose_calibration_files(calib_path, calib_timeline, path))
