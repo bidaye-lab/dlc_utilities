@@ -78,6 +78,33 @@ def remove_cols(df:pd.DataFrame, start: str = "", end: str = "", ) -> pd.DataFra
 
     return df
 
+def clean_dfs(p_csv: Path) -> pd.DataFrame:
+    print(f"[INFO] Processing {p_csv.name}")
+    csv_df = utils.load_csv_as_df(p_csv)
+
+    # Fix points
+    print("[INFO] Running `Fix points` preprocessing...")
+    col_names = ['TaG', 'Notum', 'WH']
+    n = -1 # Values will be replaced with the nth entry. To replace with the mean, use n=0
+    for name in col_names:
+        print(f"[INFO] Matching string {name}")
+        csv_df = fix_point(csv_df, name, n)
+
+    # Remove cols 
+    print("[INFO] Running `Remove cols` preprocessing...")
+    camName = p_csv.name[0]
+    start = ''
+    end = ''
+    if camName == 'B':
+        print("[INFO] camName `B`, removing cols starting with `L-`")
+        start = 'L-' # Remove col if start of name matches string
+    if camName == 'E':
+        print("[INFO] camName `E`, removing cols starting with `R-`")
+        start = 'R-' # Remove col if start of name matches string
+    csv_df = remove_cols(csv_df, start, end)
+        
+    return csv_df
+
 def df2hdf(df: pd.DataFrame, csv_path: Path, write_path: Path, root: Path = Path(r'\\mpfi.org\public\sb-lab\BallSystem_RawData')) -> None:
     """Convert pandas DF provided to hdf format and save with proper name format
 
