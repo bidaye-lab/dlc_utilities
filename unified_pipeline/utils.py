@@ -54,6 +54,13 @@ def find_nx_dirs(parent_dir: Path) -> list:
             dirs.append(parent)
     return dirs
 
+def get_genotype(path: Path, root: Path) -> Path:
+    # Helper function to get genotype for G-cam dummy file
+    path_rel = path.relative_to(root)
+
+    genotype = str(path_rel.parts[0]).strip().replace("-", "").replace("_","")
+    return genotype
+
 def create_file_name(path: Path, root: Path) -> Path:
     """Create appropriate filename from a path for each data file in the format GenotypeFlynum-camName, e.g: for camA in the BPN dataset, for fly N1, filename: BPNN1-A
 

@@ -11,7 +11,9 @@ from pathlib import Path
 import shutil
 import utils
 
-def fix_point(df:pd.DataFrame, col_name: str = "F-TaG", n: int = 1) -> pd.DataFrame: 
+root = r"\\mpfi.org\public\sb-lab\BallSystem_RawData"
+
+def fix_point(df:pd.DataFrame, col_name: str, n: int = 1) -> pd.DataFrame: 
     """Replace all values in a DataFrame corresponding to DLC CSV data with one value. 
     This is useful for a point that should stay fixed. Missing values are conserved. 
     Original file is overwritten.
@@ -21,7 +23,7 @@ def fix_point(df:pd.DataFrame, col_name: str = "F-TaG", n: int = 1) -> pd.DataFr
     df: DataFrame 
         Panda DataFrame representing CSV data 
     col_name : str, optional
-        Name of the columns, by default "F-TaG"
+        Name of the columns
     n : int, optional
         Replace values with nth entry. To replace with the mean of whole column, choose 0, by default 1
 
@@ -178,9 +180,7 @@ def traverse_dirs(directory_structure: dict, path: Path = Path('')) -> None:
                 csv_nx = csv_path.parent.parent.name
                 current_nx_dir = path.parent.name # Nx dir currently being traversed
                 if csv_nx == current_nx_dir:
-                    print(f"[INFO] CREATING HDF File IN ")
                     df2hdf(df, csv_path, path, Path(r"C:\Users\bidayelab\Documents\SummerIntern\RawData"))
-            print(f" the current Nx being traversed is {path.parent.name}")
         elif parent == 'filesmk' and child:
             for file in child:
                 filepath = path / file
@@ -189,7 +189,7 @@ def traverse_dirs(directory_structure: dict, path: Path = Path('')) -> None:
                     # if only file name entered, create at location
                     filepath.touch()
 
-def gen_anipose_files(parent_dir: Path, p_network_cfg: Path, p_anipose_config: Path, p_calibration_target: Path, p_calibration_timeline: Path, preprocessed_dfs: list, structure:dict={}) -> None:
+def gen_anipose_files(parent_dir: Path, p_network_cfg: Path, p_anipose_config: Path, p_calibration_target: Path, p_calibration_timeline: Path, preprocessed_dfs: list, p_gcam_dummy: Path, structure:dict={}) -> None:
     """Generate the necessary anipose file structure given a parent path and a file structure
 
     Parameters
@@ -219,19 +219,24 @@ def gen_anipose_files(parent_dir: Path, p_network_cfg: Path, p_anipose_config: P
     
     # Generate `project` folder structure for anipose
     project = {}
+    genotype = ""
     print(f"[INFO] Generating `project` folder structure...")
     for folder in parent_dir.glob('N*'): # find all fly folders (N1-Nx)
+        
         print(f"[INFO] Searching {folder.name} directory")
         csv_files = []
         ball_folder = parent_dir / folder / 'Ball' 
     
         for file in ball_folder.glob('*.csv'): # Find all .csv files 
+            if not genotype:
+                genotype = utils.get_genotype(file, root)
             if 'filtered' in file.name: # TODO: change to check for model name and cam as well
                 print(f"[INFO] Found filtered CSV file {file}")
                 csv_files.append(file)
         project[folder.name] = {
             'pose-2d': {
-                'filescv': preprocessed_dfs
+                'filescv': preprocessed_dfs,
+                'filecp': p_gcam_dummy.with_name(f"{genotype}{folder.name}-G.h5")
             },
             'videos-raw':{}
         }
