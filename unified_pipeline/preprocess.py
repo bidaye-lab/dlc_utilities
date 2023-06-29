@@ -8,6 +8,7 @@ import pickle
 pickle.HIGHEST_PROTOCOL = 4
 import pandas as pd
 from pathlib import Path
+import shutil
 import utils
 
 def fix_point(df:pd.DataFrame, col_name: str = "F-TaG", n: int = 1) -> pd.DataFrame: 
@@ -103,8 +104,63 @@ def df2hdf(df: pd.DataFrame, path: Path, root: Path = Path(r'\\mpfi.org\public\s
     print(f"[INFO]: Writing to file {hdf}")
     df.to_hdf(hdf, key='df_with_missing', mode='w')
 
+def traverse_dirs(directory_structure: dict, path: Path = Path('')) -> None:
+    """Traverse the directory dict structure and generate analagous file structure
 
-def gen_anipose_files(parent_dir: Path, p_network_cfg: Path, p_anipose_config: Path, p_calibration_target: Path, p_calibration_timeline: Path, structure:dict={}) -> None:
+    All directories are dicts but files are represented with the key 'files' and a list of either file names (with extension) or the full path to an existing file.
+    If the full path is provided, then the existing file will be moved from that location to the location specified in the dictionary structure.
+
+    Parameters
+    ----------
+    directory_structure : dict
+        File structure represented as a dictionary. 
+    path : Path, optional
+        Path to parent directory. The dictionary file structure will be generated such that path/<dict structure>, by default Path('')
+    """
+    for parent, child in directory_structure.items():
+        if isinstance(child, dict):
+            newpath = (path / parent)
+            if not newpath.exists():
+                print(f"[INFO] Creating new directory {newpath}")
+                newpath.mkdir()
+                traverse_dirs(child, newpath) # recursively call to traverse all subdirs
+            else:
+                print(f"[WARNING] Skipping creating {newpath} because it already exists")
+        elif parent == 'filesmv' and child:
+            for file in child:
+                if isinstance(file, Path):
+                    filepath = path / file.name
+                    if not filepath.exists():
+                        print(f"[INFO] Moving file {file} to {filepath}")
+                        file.rename(filepath) # if file path entered, move the existing file here
+                else:
+                    print(f"[WARNING] Skipping {file}, all files in `filesmv` should be paths")
+        elif parent == 'filescp' and child:
+            for file in child:
+                if isinstance(file, Path):
+                    filepath = path / file.name
+                    if not filepath.exists():
+                        print(f"[INFO] Copying file {file} to {filepath}")
+                        shutil.copy(file, filepath)
+                else:
+                    print(f"[WARNING] Skipping {file}, all files in `filescp` should be paths")
+        elif parent == 'filescv':
+            # for df, csv_path in child:
+            #     # The DF should only be written to the Nx folder it was taken from, 
+            #     # check that DF original Nx folder matches the current path
+            #     csv_nx = csv_path.parent.parent
+            #     print(f" the current Nx being traversed is {path.parent.parent.name}")
+            #     # df2hdf()
+            print(f" the current Nx being traversed is {path.parent.name}")
+        elif parent == 'filesmk' and child:
+            for file in child:
+                filepath = path / file
+                if not filepath.exists():
+                    print(f"[INFO] Creating new file at: {filepath}")
+                    # if only file name entered, create at location
+                    filepath.touch()
+
+def gen_anipose_files(parent_dir: Path, p_network_cfg: Path, p_anipose_config: Path, p_calibration_target: Path, p_calibration_timeline: Path, preprocessed_dfs: list, structure:dict={}) -> None:
     """Generate the necessary anipose file structure given a parent path and a file structure
 
     Parameters
@@ -130,32 +186,36 @@ def gen_anipose_files(parent_dir: Path, p_network_cfg: Path, p_anipose_config: P
 
     # Get anipose calib files based on configs set
     print(f"[INFO] Getting Anipose calibration files...")
-    calibration_files = utils.get_anipose_calibration_files(p_calibration_target, p_calibration_timeline, parent_dir)
+    # calibration_files = utils.get_anipose_calibration_files(p_calibration_target, p_calibration_timeline, parent_dir)
+    print("[DEV] SETTING CALIB FILES TO BLANK FOR DEV")
+    calibration_files = []
     
     # Generate `project` folder structure for anipose
     project = {}
     print(f"[INFO] Generating `project` folder structure...")
     for folder in parent_dir.glob('N*'): # find all fly folders (N1-Nx)
-        print("[INFO] Searching {folder.name} directory")
-        h5_files = []
+        print(f"[INFO] Searching {folder.name} directory")
+        csv_files = []
         ball_folder = parent_dir / folder / 'Ball' 
     
-        for file in ball_folder.glob('*.h5'): # Find all .h5 files 
-            if 'filtered' in file.name:
-                print(f"[INFO] Found HDF file {file}")
-                h5_files.append(file)
+        for file in ball_folder.glob('*.csv'): # Find all .csv files 
+            if 'filtered' in file.name: # TODO: change to check for model name and cam as well
+                print(f"[INFO] Found filtered CSV file {file}")
+                csv_files.append(file)
         project[folder.name] = {
             'pose-2d': {
-                'filesmv': h5_files # h5 files
+                'filescv': preprocessed_dfs
             },
             'videos-raw':{}
         }
     
     # Get network set name
-    cfg = utils.load_config(p_network_cfg)
-    network_set_name = cfg['Ball']['name']
+    # cfg = utils.load_config(p_network_cfg)
+    print("[DEV] SETTING CFG BLANK")
+    print("[DEV] SETTING NETWORK NAME TO TEST")
+    # network_set_name = cfg['Ball']['name']
+    network_set_name = "test"
     print(f"[INFO] Using network set name {network_set_name}")
-
     if not structure:
         print("[INFO] Using default anipose file structure")
         # Default file structure
@@ -172,4 +232,9 @@ def gen_anipose_files(parent_dir: Path, p_network_cfg: Path, p_anipose_config: P
         }
     }
 
-    utils.traverse_dirs(structure, parent_dir)
+    traverse_dirs(structure, parent_dir)
+
+    # p_anipose = parent_dir / 'anipose'
+
+
+gen_anipose_files(Path(r"C:\Users\ryabinkyj\Documents\testanalyze\RawData\BIN-1"), "", "", "", "", [])

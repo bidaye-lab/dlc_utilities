@@ -86,53 +86,6 @@ def create_file_path(path: Path, root: Path) -> Path:
     file_name = genotype + fly_num + "-" + cam_name
     return path.with_name(file_name).with_suffix(path.suffix)
 
-def traverse_dirs(directory_structure: dict, path: Path = Path('')) -> None:
-    """Traverse the directory dict structure and generate analagous file structure
-
-    All directories are dicts but files are represented with the key 'files' and a list of either file names (with extension) or the full path to an existing file.
-    If the full path is provided, then the existing file will be moved from that location to the location specified in the dictionary structure.
-
-    Parameters
-    ----------
-    directory_structure : dict
-        File structure represented as a dictionary. 
-    path : Path, optional
-        Path to parent directory. The dictionary file structure will be generated such that path/<dict structure>, by default Path('')
-    """
-    for parent, child in directory_structure.items():
-        if isinstance(child, dict):
-            newpath = (path / parent)
-            if not newpath.exists():
-                print(f"[INFO] Creating new directory {newpath}")
-                newpath.mkdir()
-                traverse_dirs(child, newpath) # recursively call to traverse all subdirs
-            else:
-                print(f"[WARNING] Skipping creating {newpath} because it already exists")
-        elif parent == 'filesmv' and child:
-            for file in child:
-                if isinstance(file, Path):
-                    filepath = path / file.name
-                    if not filepath.exists():
-                        print(f"[INFO] Moving file {file} to {filepath}")
-                        file.rename(filepath) # if file path entered, move the existing file here
-                else:
-                    print(f"[WARNING] Skipping {file}, all files in `filesmv` should be paths")
-        elif parent == 'filescp' and child:
-            for file in child:
-                if isinstance(file, Path):
-                    filepath = path / file.name
-                    if not filepath.exists():
-                        print(f"[INFO] Copying file {file} to {filepath}")
-                        shutil.copy(file, filepath)
-                else:
-                    print(f"[WARNING] Skipping {file}, all files in `filescp` should be paths")
-        elif parent == 'filesmk' and child:
-            for file in child:
-                filepath = path / file
-                if not filepath.exists():
-                    print(f"[INFO] Creating new file at: {filepath}")
-                    # if only file name entered, create at location
-                    filepath.touch()
 
 def to_dt(date_string: str, time: bool = False) -> datetime:
     match="%m%d%Y"
@@ -195,3 +148,7 @@ def get_anipose_calibration_files(p_calibration_target: Path, p_calib_timeline: 
 
     return output_files
 
+path =Path(r"Z:\BallSystem_RawData\29_P9_DiffOpsins\5xCsChrimson-P9-1540")
+calib_path=Path(r"Z:\DLC_pipeline_Dummy\7_config_files\calibration_target.yml")
+calib_timeline = Path(r"Z:\DLC_pipeline_Dummy\7_config_files\calib_timeline.yml")
+print(*get_anipose_calibration_files(calib_path, calib_timeline, path))
