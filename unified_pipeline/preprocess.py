@@ -78,7 +78,7 @@ def remove_cols(df:pd.DataFrame, start: str = "", end: str = "", ) -> pd.DataFra
 
     return df
 
-def df2hdf(df: pd.DataFrame, path: Path, root: Path = Path(r'\\mpfi.org\public\sb-lab\BallSystem_RawData')) -> None:
+def df2hdf(df: pd.DataFrame, csv_path: Path, write_path: Path, root: Path = Path(r'\\mpfi.org\public\sb-lab\BallSystem_RawData')) -> None:
     """Convert pandas DF provided to hdf format and save with proper name format
 
     Parameters
@@ -90,19 +90,20 @@ def df2hdf(df: pd.DataFrame, path: Path, root: Path = Path(r'\\mpfi.org\public\s
     """
     # Create new file name
     try:
-        new_path = utils.create_file_path(path,root)
+        file_name = utils.create_file_name(csv_path,root)
+        # TODO: generate file path
     except ValueError:
         print("[ERROR] Incorrect root.\nYour root path does not match with the parent directory provided, please make sure that you provided the correct root. \
         \nThe root should be the beginning of your parent directory path up to the folder containing raw data, e.g `\mpfi.org\public\sb-lab\BallSystem_RawData`\n")
         return -1
  
 
-    hdf = new_path.with_suffix('.h5')
-    print(f'hdf {hdf}')
+    hdf_name = file_name.with_suffix('.h5')
 
     # save to disk
-    print(f"[INFO]: Writing to file {hdf}")
-    df.to_hdf(hdf, key='df_with_missing', mode='w')
+    hdf_path = write_path / hdf_name
+    print(f"[INFO]: Writing to file {hdf_path}")
+    df.to_hdf(hdf_path, key='df_with_missing', mode='w')
 
 def traverse_dirs(directory_structure: dict, path: Path = Path('')) -> None:
     """Traverse the directory dict structure and generate analagous file structure
@@ -151,7 +152,8 @@ def traverse_dirs(directory_structure: dict, path: Path = Path('')) -> None:
                 csv_nx = csv_path.parent.parent.name
                 current_nx_dir = path.parent.name # Nx dir currently being traversed
                 if csv_nx == current_nx_dir:
-                    df2hdf(df, csv_path)
+                    print(f"[INFO] CREATING HDF File IN ")
+                    df2hdf(df, csv_path, path, Path(r"C:\Users\bidayelab\Documents\SummerIntern\RawData"))
             print(f" the current Nx being traversed is {path.parent.name}")
         elif parent == 'filesmk' and child:
             for file in child:

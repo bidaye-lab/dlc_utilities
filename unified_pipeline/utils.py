@@ -54,7 +54,7 @@ def find_nx_dirs(parent_dir: Path) -> list:
             dirs.append(parent)
     return dirs
 
-def create_file_path(path: Path, root: Path) -> Path:
+def create_file_name(path: Path, root: Path) -> Path:
     """Create appropriate filename from a path for each data file in the format GenotypeFlynum-camName, e.g: for camA in the BPN dataset, for fly N1, filename: BPNN1-A
 
     Parameters
@@ -84,7 +84,7 @@ def create_file_path(path: Path, root: Path) -> Path:
     fly_num = str(path.parent.parent.name).strip()
     genotype = str(path_rel.parts[0]).strip().replace("-", "").replace("_", "")
     file_name = genotype + fly_num + "-" + cam_name
-    return path.with_name(file_name).with_suffix(path.suffix)
+    return Path(file_name)
 
 
 def to_dt(date_string: str, time: bool = False) -> datetime:
