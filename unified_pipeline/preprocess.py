@@ -146,8 +146,8 @@ def traverse_dirs(directory_structure: dict, path: Path = Path('')) -> None:
     path : Path, optional
         Path to parent directory. The dictionary file structure will be generated such that path/<dict structure>, by default Path('')
     """
-    for parent, child in directory_structure.items():
-        if isinstance(child, dict):
+    for parent, child in directory_structure.items(): # loop over the directory structure
+        if isinstance(child, dict): # dict is a directory, create dir and then call recursively
             newpath = (path / parent)
             if not newpath.exists():
                 print(f"[INFO] Creating new directory {newpath}")
@@ -155,7 +155,7 @@ def traverse_dirs(directory_structure: dict, path: Path = Path('')) -> None:
                 traverse_dirs(child, newpath) # recursively call to traverse all subdirs
             else:
                 print(f"[WARNING] Skipping creating {newpath} because it already exists")
-        elif parent == 'filesmv' and child:
+        elif parent == 'filesmv' and child: # move files in child list
             for file in child:
                 if isinstance(file, Path):
                     filepath = path / file.name
@@ -164,7 +164,7 @@ def traverse_dirs(directory_structure: dict, path: Path = Path('')) -> None:
                         file.rename(filepath) # if file path entered, move the existing file here
                 else:
                     print(f"[WARNING] Skipping {file}, all files in `filesmv` should be paths")
-        elif parent == 'filescp' and child:
+        elif parent == 'filescp' and child: # copy files in child list
             for file in child:
                 if isinstance(file, tuple): # (file, with name)
                     original_filepath = file[0] 
@@ -173,22 +173,22 @@ def traverse_dirs(directory_structure: dict, path: Path = Path('')) -> None:
                     if not filepath.exists():
                         print(f"[INFO] Copying file {original_filepath} to {filepath}")
                         shutil.copy(original_filepath, filepath)
-                elif isinstance(file, Path):
+                elif isinstance(file, Path): # If just path, then the file name will be the same as original
                     filepath = path / file.name
                     if not filepath.exists():
                         print(f"[INFO] Copying file {file} to {filepath}")
                         shutil.copy(file, filepath)
                 else:
                     print(f"[WARNING] Skipping {file}, all files in `filescp` should be paths")
-        elif parent == 'filescv':
+        elif parent == 'filescv': # convert files in child list
             for df, csv_path in child:
                 # The DF should only be written to the Nx folder it was taken from, 
                 # check that DF original Nx folder matches the current path
-                csv_nx = csv_path.parent.parent.name
+                csv_nx = csv_path.parent.parent.name # Nx folder for the original CSV
                 current_nx_dir = path.parent.name # Nx dir currently being traversed
                 if csv_nx == current_nx_dir:
                     df2hdf(df, csv_path, path, Path(r"C:\Users\bidayelab\Documents\SummerIntern\RawData"))
-        elif parent == 'filesmk' and child:
+        elif parent == 'filesmk' and child: # Create the file if only the file name provided
             for file in child:
                 filepath = path / file
                 if not filepath.exists():
@@ -235,8 +235,8 @@ def gen_anipose_files(parent_dir: Path, p_network_cfg: Path, p_anipose_config: P
         ball_folder = parent_dir / folder / 'Ball' 
         for file in ball_folder.glob('*.csv'): # Find all .csv files 
             if not genotype:
-                genotype = utils.get_genotype(file, root)
-            if 'filtered' in file.name: # TODO: change to check for model name and cam as well
+                genotype = utils.get_genotype(file, root) # get genotype for G-cam dummy file 
+            if 'filtered' in file.name: # TODO: change to check for model name and cam as well, i.e make sure that only grabbing files which match the currently set networks
                 print(f"[INFO] Found filtered CSV file {file}")
                 csv_files.append(file)
         project[folder.name] = {

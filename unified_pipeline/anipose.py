@@ -11,7 +11,7 @@ import utils
 
 def run_anipose_commands():
     commands = ['anipose filter', 'anipose triangulate', 'anipose angles']    
-    for command in commands:
+    for command in commands: # run all commands
         print(f'[INFO] Running {command}')
         process = subprocess.run(command.split(), check=True)
         if process.returncode != 0:
@@ -28,7 +28,7 @@ def run(parent_dir: Path) -> None:
     """
     num_run = 0 # number of times anipose has been run (essentially number of dirs modified)
     nx_dirs = utils.find_nx_dirs(parent_dir)
-    for nxdir in nx_dirs:
+    for nxdir in nx_dirs: # run on all Nx dirs
         p_anipose = nxdir / 'anipose' 
         print(f"[INFO] Found anipose directory {p_anipose}")
         for p_n1 in p_anipose.glob('**/N1'):
