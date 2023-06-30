@@ -166,13 +166,15 @@ def traverse_dirs(directory_structure: dict, path: Path = Path('')) -> None:
                     print(f"[WARNING] Skipping {file}, all files in `filesmv` should be paths")
         elif parent == 'filescp' and child:
             for file in child:
-                if isinstance(file, Path):
-                    filepath = path / file.name
+                if isinstance(file, tuple): # (file, with name)
+                    original_filepath = file[0] 
+                    new_name = file[1]
+                    filepath = path / new_name
                     if not filepath.exists():
-                        print(f"[INFO] Copying file {file} to {filepath}")
-                        shutil.copy(file, filepath)
-                elif isinstance(file, tuple): # (file, with name)
-                    filepath = path / file[1]
+                        print(f"[INFO] Copying file {original_filepath} to {filepath}")
+                        shutil.copy(original_filepath, filepath)
+                elif isinstance(file, Path):
+                    filepath = path / file.name
                     if not filepath.exists():
                         print(f"[INFO] Copying file {file} to {filepath}")
                         shutil.copy(file, filepath)
