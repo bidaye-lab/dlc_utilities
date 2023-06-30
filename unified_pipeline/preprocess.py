@@ -11,7 +11,7 @@ from pathlib import Path
 import shutil
 import utils
 
-root = r"\\mpfi.org\public\sb-lab\BallSystem_RawData"
+root = Path(r"C:\Users\ryabinkyj\Documents\testanalyze\RawData")
 
 def fix_point(df:pd.DataFrame, col_name: str, n: int = 1) -> pd.DataFrame: 
     """Replace all values in a DataFrame corresponding to DLC CSV data with one value. 
@@ -107,7 +107,7 @@ def clean_dfs(p_csv: Path) -> pd.DataFrame:
         
     return csv_df
 
-def df2hdf(df: pd.DataFrame, csv_path: Path, write_path: Path, root: Path = Path(r'\\mpfi.org\public\sb-lab\BallSystem_RawData')) -> None:
+def df2hdf(df: pd.DataFrame, csv_path: Path, write_path: Path, root: Path = root) -> None:
     """Convert pandas DF provided to hdf format and save with proper name format
 
     Parameters
@@ -171,6 +171,11 @@ def traverse_dirs(directory_structure: dict, path: Path = Path('')) -> None:
                     if not filepath.exists():
                         print(f"[INFO] Copying file {file} to {filepath}")
                         shutil.copy(file, filepath)
+                elif isinstance(file, tuple): # (file, with name)
+                    filepath = path / file[1]
+                    if not filepath.exists():
+                        print(f"[INFO] Copying file {file} to {filepath}")
+                        shutil.copy(file, filepath)
                 else:
                     print(f"[WARNING] Skipping {file}, all files in `filescp` should be paths")
         elif parent == 'filescv':
@@ -226,7 +231,6 @@ def gen_anipose_files(parent_dir: Path, p_network_cfg: Path, p_anipose_config: P
         print(f"[INFO] Searching {folder.name} directory")
         csv_files = []
         ball_folder = parent_dir / folder / 'Ball' 
-    
         for file in ball_folder.glob('*.csv'): # Find all .csv files 
             if not genotype:
                 genotype = utils.get_genotype(file, root)
@@ -254,7 +258,7 @@ def gen_anipose_files(parent_dir: Path, p_network_cfg: Path, p_anipose_config: P
                 f'{network_set_name}': {
                     'calibration':{'filescp':calibration_files},
                     'project': project, # N1-Nx
-                    'filescp':[p_anipose_config.with_name('config.toml')]
+                    'filescp':[(p_anipose_config, 'config.toml')]
                 },
             },
             'SS': {},
