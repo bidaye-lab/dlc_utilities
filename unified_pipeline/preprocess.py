@@ -196,7 +196,7 @@ def traverse_dirs(directory_structure: dict, path: Path = Path('')) -> None:
                     # if only file name entered, create at location
                     filepath.touch()
 
-def gen_anipose_files(parent_dir: Path, p_network_cfg: Path, p_anipose_config: Path, p_calibration_target: Path, p_calibration_timeline: Path, preprocessed_dfs: list, p_gcam_dummy: Path, structure:dict={}) -> None:
+def gen_anipose_files(parent_dir: Path, p_network_cfg: Path, p_calibration_target: Path, p_calibration_timeline: Path, preprocessed_dfs: list, p_gcam_dummy: Path, structure:dict={}) -> None:
     """Generate the necessary anipose file structure given a parent path and a file structure
 
     Parameters
@@ -221,6 +221,15 @@ def gen_anipose_files(parent_dir: Path, p_network_cfg: Path, p_anipose_config: P
     """
 
     # Get anipose calib files based on configs set
+    calibration_type = utils.get_calibration_type(p_calibration_target, parent_dir)
+    if calibration_type == 'fly':
+        p_anipose_config = Path(r"./common_files/config_fly.toml") # anipose config file
+    elif calibration_type == 'board':
+        p_anipose_config = Path(r"./common_files/config_board.toml") # anipose config file
+    else:
+        print(f"[ERROR] Invalid calibration type or calibration type not specified in {p_calibration_target}")
+        error = True
+
     print(f"[INFO] Getting Anipose calibration files...")
     calibration_files = utils.get_anipose_calibration_files(p_calibration_target, p_calibration_timeline, parent_dir)
     
