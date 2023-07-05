@@ -2,6 +2,7 @@
 dlc.py: Run DLC commands on raw data and generate DLC predictions
 """
 
+import logging
 import deeplabcut
 import os
 import glob as glob
@@ -52,19 +53,19 @@ def analyze_new(videos_folders_path: Path, cfg_path: Path) -> None:
 
         # Run DLC on each video file within the current video folder
         for i, video_file in enumerate(single_folder):
-            print(f"current movie {video_file.name}")
+            logging.info(f"current movie {video_file.name}")
             cam_type = str(video_file.name)[0]
             if cam_type not in model_paths:
-                print(f"Invalid camera type or movie file name {video_file.name}")
+                logging.warning(f"Skipping video file, invalid camera type or movie file name {video_file.name}")
             elif cam_type == 'G':
                 # Top-down view (Camera G) is ignored 
                 continue
             else:
-                print(f"\n[INFO] Camera: {cam_type}")
-                print(f"[INFO] Model path: {model_paths[cam_type]}")
-                print("[INFO] Video file path:", single_folder[i])
+                logging.info(f"Camera: {cam_type}")
+                logging.info(f"Model path: {model_paths[cam_type]}")
+                logging.info("Video file path:", single_folder[i])
                 config_path = Path(model_paths[cam_type]) / 'config.yaml' # path to the DLC config for that particular network
-                print(f"[INFO] DLC Config path {config_path}\n")
+                logging.info(f"DLC Config path {config_path}\n")
 
                 deeplabcut.analyze_videos(config_path, str(video_file), save_as_csv=True)
                 deeplabcut.filterpredictions(config_path, str(video_file), save_as_csv=True)

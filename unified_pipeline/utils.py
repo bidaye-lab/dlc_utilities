@@ -4,6 +4,7 @@ utils.py: Utility, helper functions for DLC/Anipose pipeline
 
 __author__ = "Jacob Ryabinky"
 
+import logging
 import yaml
 from pathlib import Path
 import shutil
@@ -44,7 +45,7 @@ def get_csvs(path: Path) -> list:
 def backup_file(path: Path) -> None:
     backup = Path(str(path) + '_backup')
     path.replace(backup) 
-    print(f'[INFO] backup file saved to {backup}')
+    logging.info(f'backup file saved to {backup}')
 
 def find_nx_dirs(parent_dir: Path) -> list:
     dirs = []
@@ -139,7 +140,8 @@ def get_anipose_calibration_files(p_calibration_target: Path, p_calib_timeline: 
             p_calibration_files = Path(path)
             break
     else:
-        print(f"[ERROR] Calibration type not specified in `{p_calibration_target}`")
+        logging.error(f"Calibration type not specified in `{p_calibration_target}`")
+        return
 
     output_files=[]
     if p_calibration_files and p_calibration_files.exists(): # calibration file dir found
@@ -152,8 +154,10 @@ def get_anipose_calibration_files(p_calibration_target: Path, p_calib_timeline: 
         elif calibration_type == 'fly':
             output_files.append(p_detection_pickle)
         else:
-            print(f"[ERROR] Invalid calibration type or calibration type not specified in `{p_calibration_target}")
+            logging.error(f"Invalid calibration type or calibration type not specified in `{p_calibration_target}")
+            return
     else:
-        print("[ERROR] No matching calibration directory for video files")
+        logging.error("No matching calibration directory for video files")
+        return
 
     return output_files

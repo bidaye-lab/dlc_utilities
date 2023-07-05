@@ -4,6 +4,7 @@ preprocess.py: various preprocessing functions used to prepare data for anipose 
 
 __author__ = "Nico Spiller, Jacob Ryabinky"
 
+import logging
 import pickle
 pickle.HIGHEST_PROTOCOL = 4
 import pandas as pd
@@ -41,7 +42,7 @@ def fix_point(df:pd.DataFrame, col_name: str, n: int = 1) -> pd.DataFrame:
         x = c.mean() # calculate mean
         
     c.where( c.isnull(), x, axis=1, inplace=True) # replace all non-nan values with x
-    print(f'INFO value in {col_name} replaced with {x.values}')
+    logging.info(f"value in {col_name} replaced with {x.values}")
 
     df.loc[c.index, c.columns] = c # merge back to full dataframe
     
@@ -70,38 +71,38 @@ def remove_cols(df:pd.DataFrame, start: str = "", end: str = "", ) -> pd.DataFra
     if start:
         cols = df.loc[ :, df.loc[1, :].apply(lambda x: x.startswith(start)) ].columns
         df = df.drop(columns=cols)
-        print('[INFO] removed {} columns starting with {}'.format(len(cols), start))
+        logging.info(' removed {} columns starting with {}'.format(len(cols), start))
 
     # filter columns based on end of name
     if end:
         cols = df.loc[ :, df.loc[1, :].apply(lambda x: x.endswith(end)) ].columns
         df = df.loc[:, cols]
-        print('[INFO] removed {} columns ending with {}'.format(len(cols), end))
+        logging.info(' removed {} columns ending with {}'.format(len(cols), end))
 
     return df
 
 def clean_dfs(p_csv: Path) -> pd.DataFrame:
-    print(f"[INFO] Processing {p_csv.name}")
+    logging.info(f"Processing {p_csv.name}")
     csv_df = utils.load_csv_as_df(p_csv)
 
     # Fix points
-    print("[INFO] Running `Fix points` preprocessing...")
+    logging.info(" Running `Fix points` preprocessing...")
     col_names = ['TaG', 'Notum', 'WH']
     n = -1 # Values will be replaced with the nth entry. To replace with the mean, use n=0
     for name in col_names:
-        print(f"[INFO] Matching string {name}")
+        logging.info(f" Matching string {name}")
         csv_df = fix_point(csv_df, name, n)
 
     # Remove cols 
-    print("[INFO] Running `Remove cols` preprocessing...")
+    logging.info("Running `Remove cols` preprocessing...")
     camName = p_csv.name[0]
     start = ''
     end = ''
     if camName == 'B':
-        print("[INFO] camName `B`, removing cols starting with `L-`")
+        logging.info("camName `B`, removing cols starting with `L-`")
         start = 'L-' # Remove col if start of name matches string
     if camName == 'E':
-        print("[INFO] camName `E`, removing cols starting with `R-`")
+        logging.info("camName `E`, removing cols starting with `R-`")
         start = 'R-' # Remove col if start of name matches string
     csv_df = remove_cols(csv_df, start, end)
         
@@ -121,7 +122,7 @@ def df2hdf(df: pd.DataFrame, csv_path: Path, write_path: Path, root: Path = root
     try:
         file_name = utils.create_file_name(csv_path,root)
     except ValueError:
-        print("[ERROR] Incorrect root.\nYour root path does not match with the parent directory provided, please make sure that you provided the correct root. \
+        logging.critical("Incorrect root.\nYour root path does not match with the parent directory provided, please make sure that you provided the correct root. \
         \nThe root should be the beginning of your parent directory path up to the folder containing raw data, e.g `\mpfi.org\public\sb-lab\BallSystem_RawData`\n")
         return -1
  
@@ -130,7 +131,7 @@ def df2hdf(df: pd.DataFrame, csv_path: Path, write_path: Path, root: Path = root
 
     # save to disk
     hdf_path = write_path / hdf_name
-    print(f"[INFO]: Writing to file {hdf_path}")
+    logging.info(f"Writing to file {hdf_path}")
     df.to_hdf(hdf_path, key='df_with_missing', mode='w')
 
 def traverse_dirs(directory_structure: dict, path: Path = Path('')) -> None:
@@ -150,20 +151,20 @@ def traverse_dirs(directory_structure: dict, path: Path = Path('')) -> None:
         if isinstance(child, dict): # dict is a directory, create dir and then call recursively
             newpath = (path / parent)
             if not newpath.exists():
-                print(f"[INFO] Creating new directory {newpath}")
+                logging.info(f" Creating new directory {newpath}")
                 newpath.mkdir()
                 traverse_dirs(child, newpath) # recursively call to traverse all subdirs
             else:
-                print(f"[WARNING] Skipping creating {newpath} because it already exists")
+                logging.warning(f"Skipping creating {newpath} because it already exists")
         elif parent == 'filesmv' and child: # move files in child list
             for file in child:
                 if isinstance(file, Path):
                     filepath = path / file.name
                     if not filepath.exists():
-                        print(f"[INFO] Moving file {file} to {filepath}")
+                        logging.info(f"Moving file {file} to {filepath}")
                         file.rename(filepath) # if file path entered, move the existing file here
                 else:
-                    print(f"[WARNING] Skipping {file}, all files in `filesmv` should be paths")
+                    logging.warning(f"Skipping {file}, all files in `filesmv` should be paths")
         elif parent == 'filescp' and child: # copy files in child list
             for file in child:
                 if isinstance(file, tuple): # (file, with name)
@@ -171,15 +172,15 @@ def traverse_dirs(directory_structure: dict, path: Path = Path('')) -> None:
                     new_name = file[1]
                     filepath = path / new_name
                     if not filepath.exists():
-                        print(f"[INFO] Copying file {original_filepath} to {filepath}")
+                        logging.info(f"Copying file {original_filepath} to {filepath}")
                         shutil.copy(original_filepath, filepath)
                 elif isinstance(file, Path): # If just path, then the file name will be the same as original
                     filepath = path / file.name
                     if not filepath.exists():
-                        print(f"[INFO] Copying file {file} to {filepath}")
+                        logging.info(f"Copying file {file} to {filepath}")
                         shutil.copy(file, filepath)
                 else:
-                    print(f"[WARNING] Skipping {file}, all files in `filescp` should be paths")
+                    logging.warning(f"Skipping {file}, all files in `filescp` should be paths")
         elif parent == 'filescv': # convert files in child list
             for df, csv_path in child:
                 # The DF should only be written to the Nx folder it was taken from, 
@@ -192,7 +193,7 @@ def traverse_dirs(directory_structure: dict, path: Path = Path('')) -> None:
             for file in child:
                 filepath = path / file
                 if not filepath.exists():
-                    print(f"[INFO] Creating new file at: {filepath}")
+                    logging.info(f"Creating new file at: {filepath}")
                     # if only file name entered, create at location
                     filepath.touch()
 
@@ -227,29 +228,29 @@ def gen_anipose_files(parent_dir: Path, p_network_cfg: Path, p_calibration_targe
     elif calibration_type == 'board':
         p_anipose_config = Path(r"./common_files/config_board.toml") # anipose config file
     else:
-        print(f"[ERROR] Invalid calibration type or calibration type not specified in {p_calibration_target}")
+        logging.error(f"Invalid calibration type or calibration type not specified in {p_calibration_target}")
         return
 
-    print(f"[INFO] Getting Anipose calibration files...")
+    logging.info(f"Getting Anipose calibration files...")
     calibration_files = utils.get_anipose_calibration_files(p_calibration_target, p_calibration_timeline, parent_dir)
     if not calibration_files: # calib files could not be found
-        print(f"[ERROR] Calibration files not found")
+        logging.error("Calibration files not found")
         return
     
     # Generate `project` folder structure for anipose
     project = {}
     genotype = ""
-    print(f"[INFO] Generating `project` folder structure...")
+    logging.info(f"Generating `project` folder structure...")
     for folder in parent_dir.glob('N*'): # find all fly folders (N1-Nx)
         
-        print(f"[INFO] Searching {folder.name} directory")
+        logging.info(f"Searching {folder.name} directory")
         csv_files = []
         ball_folder = parent_dir / folder / 'Ball' 
         for file in ball_folder.glob('*.csv'): # Find all .csv files 
             if not genotype:
                 genotype = utils.get_genotype(file, root) # get genotype for G-cam dummy file 
             if 'filtered' in file.name: # TODO: change to check for model name and cam as well, i.e make sure that only grabbing files which match the currently set networks
-                print(f"[INFO] Found filtered CSV file {file}")
+                logging.info(f"Found filtered CSV file {file}")
                 csv_files.append(file)
         project[folder.name] = {
             'pose-2d': {
@@ -262,9 +263,9 @@ def gen_anipose_files(parent_dir: Path, p_network_cfg: Path, p_calibration_targe
     # Get network set name
     cfg = utils.load_config(p_network_cfg)
     network_set_name = cfg['Ball']['name']
-    print(f"[INFO] Using network set name {network_set_name}")
+    logging.info(f"Using network set name {network_set_name}")
     if not structure:
-        print("[INFO] Using default anipose file structure")
+        logging.info("Using default anipose file structure")
         # Default file structure
         structure = {
         'anipose': {    
