@@ -228,10 +228,13 @@ def gen_anipose_files(parent_dir: Path, p_network_cfg: Path, p_calibration_targe
         p_anipose_config = Path(r"./common_files/config_board.toml") # anipose config file
     else:
         print(f"[ERROR] Invalid calibration type or calibration type not specified in {p_calibration_target}")
-        error = True
+        return
 
     print(f"[INFO] Getting Anipose calibration files...")
     calibration_files = utils.get_anipose_calibration_files(p_calibration_target, p_calibration_timeline, parent_dir)
+    if not calibration_files: # calib files could not be found
+        print(f"[ERROR] Calibration files not found")
+        return
     
     # Generate `project` folder structure for anipose
     project = {}

@@ -137,9 +137,12 @@ def get_anipose_calibration_files(p_calibration_target: Path, p_calib_timeline: 
         dt_daterange = DateTimeRange(dt_start, dt_end)
         if project_date in dt_daterange: # determine if the project falls in the date range
             p_calibration_files = Path(path)
+            break
+    else:
+        print(f"[ERROR] Calibration type not specified in `{p_calibration_target}`")
 
     output_files=[]
-    if p_calibration_files: # calibration file dir found
+    if p_calibration_files and p_calibration_files.exists(): # calibration file dir found
         calibration_type = get_calibration_type(p_calibration_target, p_project_dir)
         p_detection_pickle = next(p_calibration_files.glob('**/detections.pickle'))
         p_calibration_toml = next(p_calibration_files.glob('**/calibration.toml')) 
