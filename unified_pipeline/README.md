@@ -5,7 +5,7 @@ Combines previous DLC, preprocessing, and Anipose scripts into one pipeline to m
 ## Installation
 
 1. Install [DeepLabCut](https://deeplabcut.github.io/DeepLabCut/docs/installation.html) and [Anipose](https://anipose.readthedocs.io/en/latest/installation.html) into separate Anaconda environments (e.g `DEEPLABCUT` and `Anipose`)
-2. Run `conda activate <env-name>` and then `pip install datetimerange` for both the DLC and Anipose environments. 
+2. Run `conda activate <deeplabcut-env-name>` and then `pip install datetimerange` to install the datetimerange library in the deeplabcut environment. 
 
 ## Usage
 
