@@ -4,7 +4,6 @@ dlc.py: Run DLC commands on raw data and generate DLC predictions
 
 import logging
 import deeplabcut
-import os
 import glob as glob
 from pathlib import Path
 import utils 
@@ -71,4 +70,5 @@ def analyze_new(videos_folders_path: Path, cfg_path: Path) -> None:
                 deeplabcut.filterpredictions(config_path, str(video_file), save_as_csv=True)
 
                 # deeplabcut.create_labeled_video(config_path, [str(single_folder[i])], videotype='.mp4', filtered=True)
+    
 
