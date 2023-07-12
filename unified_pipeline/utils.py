@@ -29,7 +29,9 @@ def load_config(path: str):
     return cfg
 
 def load_csv_as_df(csv: Path) -> pd.DataFrame:
-    return pd.read_csv(csv, header=None)
+    df = pd.read_csv(csv, index_col=0, header=[0, 1, 2])
+    df.columns.set_levels([df.columns[0][0]], level='scorer')
+    return df
 
 def get_csvs(path: Path) -> list:
     csv_paths = []

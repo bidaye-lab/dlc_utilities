@@ -175,13 +175,13 @@ def remove_cols(df:pd.DataFrame, start: str = "", end: str = "", ) -> pd.DataFra
 
     # filter columns based on beginning of name
     if start:
-        cols = df.loc[ :, df.loc[1, :].apply(lambda x: x.startswith(start)) ].columns
+        cols = df.loc[ :, df.loc[1, :].apply(lambda x: str(x).startswith(start)) ].columns
         df = df.drop(columns=cols)
         logging.info(' removed {} columns starting with {}'.format(len(cols), start))
 
     # filter columns based on end of name
     if end:
-        cols = df.loc[ :, df.loc[1, :].apply(lambda x: x.endswith(end)) ].columns
+        cols = df.loc[ :, df.loc[1, :].apply(lambda x: str(x).endswith(end)) ].columns
         df = df.loc[:, cols]
         logging.info(' removed {} columns ending with {}'.format(len(cols), end))
 
@@ -193,8 +193,13 @@ def clean_dfs(p_csv: Path) -> pd.DataFrame:
 
     # Fix points
     logging.info(" Running `Fix points` preprocessing...")
-    col_names = ['TaG', 'Notum', 'WH']
-    n = -1 # Values will be replaced with the nth entry. To replace with the mean, use n=0
+    col_names = [
+        'R-F-ThC', 'R-M-ThC', 'R-H-ThC',
+        'L-F-ThC', 'L-M-ThC', 'L-H-ThC', 
+        'R-WH', 'L-WH',
+        'Notum',
+    ]
+    n = 0 # Values will be replaced with the nth entry. To replace with the mean, use n=0
     for name in col_names:
         logging.info(f" Matching string {name}")
         csv_df = fix_point(csv_df, name, n)
