@@ -45,9 +45,9 @@ def create_file_name(path: Path, root: Path) -> Path:
     path_rel = path.relative_to(root)
 
 
-    cam_name = str(path.name)[-1]
+    cam_name = str(path.name).split("-")[0]
     fly_num = str(path.parent.parent.name).strip()
-    genotype = str(path_rel.parts[-1]).strip().replace("-", "").replace("_", "")
+    genotype = str(path_rel.parts[0]).strip().replace("-", "").replace("_", "")
     file_name = genotype + fly_num + "-" + cam_name
     return Path(file_name)
 
@@ -88,8 +88,8 @@ def get_anipose_calibration_files(p_calibration_target: Path, p_calib_timeline: 
     project_date = get_date_time(p_project_dir)
 
     for path, daterange in calibration_timeline.items():
-        start = daterange.split("-")[-1].strip()
-        end =  daterange.split("-")[0].strip()
+        start = daterange.split("-")[0].strip()
+        end =  daterange.split("-")[1].strip()
         dt_start = to_dt(start)
         dt_end = to_dt(end)
         dt_daterange = DateTimeRange(dt_start, dt_end)
@@ -226,7 +226,7 @@ def df2hdf(df: pd.DataFrame, csv_path: Path, write_path: Path, root: Path = root
     """
     # Create new file name
     try:
-        file_name = utils.create_file_name(csv_path,root)
+        file_name = create_file_name(csv_path,root)
     except ValueError:
         logging.critical("Incorrect root.\nYour root path does not match with the parent directory provided, please make sure that you provided the correct root. \
         \nThe root should be the beginning of your parent directory path up to the folder containing raw data, e.g `\mpfi.org\public\sb-lab\BallSystem_RawData`\n")
@@ -240,7 +240,7 @@ def df2hdf(df: pd.DataFrame, csv_path: Path, write_path: Path, root: Path = root
     logging.info(f"Writing to file {hdf_path}")
     df.to_hdf(hdf_path, key='df_with_missing', mode='w')
 
-def traverse_dirs(directory_structure: dict, path: Path = Path('')) -> None:
+def traverse_dirs(directory_structure: dict, parent_dir: Path, path: Path = Path('')) -> None:
     """Traverse the directory dict structure and generate analagous file structure
 
     All directories are dicts but files are represented with the key 'files' and a list of either file names (with extension) or the full path to an existing file.
@@ -259,7 +259,7 @@ def traverse_dirs(directory_structure: dict, path: Path = Path('')) -> None:
             if not newpath.exists():
                 logging.info(f" Creating new directory {newpath}")
                 newpath.mkdir()
-                traverse_dirs(child, newpath) # recursively call to traverse all subdirs
+                traverse_dirs(child, parent_dir, path=newpath) # recursively call to traverse all subdirs
             else:
                 logging.warning(f"Skipping creating {newpath} because it already exists")
         elif parent == 'filesmv' and child: # move files in child list
@@ -293,8 +293,9 @@ def traverse_dirs(directory_structure: dict, path: Path = Path('')) -> None:
                 # check that DF original Nx folder matches the current path
                 csv_nx = csv_path.parent.parent.name # Nx folder for the original CSV
                 current_nx_dir = path.parent.name # Nx dir currently being traversed
-                if csv_nx == current_nx_dir:
-                    df2hdf(df, csv_path, path, Path(r"C:\Users\bidayelab\Documents\SummerIntern\RawData"))
+                if parent_dir in csv_path.parents and csv_nx == current_nx_dir: # Check that parent directory and Nx folder are the same
+                  
+                    df2hdf(df, csv_path, path, root)
         elif parent == 'filesmk' and child: # Create the file if only the file name provided
             for file in child:
                 filepath = path / file
@@ -328,7 +329,7 @@ def gen_anipose_files(parent_dir: Path, p_network_cfg: Path, p_calibration_targe
     """
 
     # Get anipose calib files based on configs set
-    calibration_type = utils.get_calibration_type(p_calibration_target, parent_dir)
+    calibration_type = get_calibration_type(p_calibration_target, parent_dir)
     if calibration_type == 'fly':
         p_anipose_config = Path(r"./common_files/config_fly.toml") # anipose config file
     elif calibration_type == 'board':
@@ -338,7 +339,7 @@ def gen_anipose_files(parent_dir: Path, p_network_cfg: Path, p_calibration_targe
         return
 
     logging.info(f"Getting Anipose calibration files...")
-    calibration_files = utils.get_anipose_calibration_files(p_calibration_target, p_calibration_timeline, parent_dir)
+    calibration_files = get_anipose_calibration_files(p_calibration_target, p_calibration_timeline, parent_dir)
     if not calibration_files: # calib files could not be found
         logging.error("Calibration files not found")
         return
@@ -358,10 +359,11 @@ def gen_anipose_files(parent_dir: Path, p_network_cfg: Path, p_calibration_targe
             if 'filtered' in file.name: # TODO: change to check for model name and cam as well, i.e make sure that only grabbing files which match the currently set networks
                 logging.info(f"Found filtered CSV file {file}")
                 csv_files.append(file)
+        gcam = (p_gcam_dummy, f"{genotype}{folder.name}-G.h5")
         project[folder.name] = {
             'pose-2d': {
                 'filescv': preprocessed_dfs,
-                'filecp': p_gcam_dummy.with_name(f"{genotype}{folder.name}-G.h5")
+                'filescp': [gcam]
             },
             'videos-raw':{}
         }
@@ -386,4 +388,4 @@ def gen_anipose_files(parent_dir: Path, p_network_cfg: Path, p_calibration_targe
         }
     }
 
-    traverse_dirs(structure, parent_dir)
+    traverse_dirs(structure, parent_dir, parent_dir)
