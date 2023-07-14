@@ -394,3 +394,58 @@ def gen_anipose_files(parent_dir: Path, p_network_cfg: Path, p_calibration_targe
     }
 
     traverse_dirs(structure, parent_dir, parent_dir)
+
+def run_preprocessing(videos: Path, p_networks: Path, p_common_files: Path = Path(r"./common_files") ):
+    error = False
+
+    # find all the CSVs that DLC generated
+    processed_dirs = {}
+    for p_csv in utils.get_csvs(videos): # get all CSVs
+        parent_dir = p_csv.parent.parent.parent
+
+        # Pick current generated, filtered CSV 
+        
+        # TODO: also check for cam name and model name
+        csv_name = p_csv.stem
+        if "filtered" not in csv_name:
+            # only run on filtered CSVs
+            continue
+
+        # Fix points, remove columns 
+        csv_df = clean_dfs(p_csv)
+
+        processed_csv = (csv_df, p_csv)
+        if parent_dir in processed_dirs:
+            processed_dirs[parent_dir].append(processed_csv) # Append to list of processed CSVs under that parent directory
+        else:
+            processed_dirs[parent_dir] = [processed_csv] # Create list of processed CSVs under that parent directory
+
+    # Generate anipose file structure
+    # p_calibration_target = Path(r"./common_files/calibration_target.yml") # calibration target config file 
+    # p_calibration_timeline = Path(r"./common_files/calib_timeline.yml") # calibration timeline config file
+    # p_gcam_dummy = Path(r"./common_files/GenotypeFly-G.h5") # Dummy file for G camera (top-down view)
+    p_calibration_target = p_common_files / 'calibration_target.yml'
+    p_calibration_timeline = p_common_files / 'calibration_timeline'
+    p_gcam_dummy = p_common_files / 'GenotypeFly-G.h5'
+
+    # check that all the files exist
+    if not p_calibration_target.exists():
+        logging.error("`calibration_target.yml` does not exist.")
+        error = True
+    if not p_calibration_timeline.exists():
+        logging.error("`calib_timeline.yml` does not exist.")
+        error = True
+    if not p_gcam_dummy.exists():
+        logging.error("`GenotypeFly-G.h5` (G camera dummy file) does not exist.")
+        error = True
+
+    if not error:
+        logging.info("Generating anipose files...")
+        for parent_dir, processed_csvs in processed_dirs:
+            if not gen_anipose_files(parent_dir, p_networks, p_calibration_target, p_calibration_timeline, processed_csvs, p_gcam_dummy):
+                # TODO: gen_anipose_files needs to return somethng when it finishes (maybe directory where it was generated)
+                print(f"[WARNING] Skipped anipose generation for {parent_dir}")
+        print('Finished preprocessing...')
+    else:
+        print("Terminated due to error.")
+
