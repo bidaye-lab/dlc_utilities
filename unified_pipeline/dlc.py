@@ -39,13 +39,14 @@ def analyze_new(videos_folders_path: Path, cfg_path: Path) -> None:
     """
 
    
+    #TODO: Add checks that DLC hasn't been run in a folder (with that particular network set) before running DLC
     video_folders = []
     # Find all ball folders (Nx / Ball / Video files)
     for folder in videos_folders_path.glob('**/Ball'):
         video_folders.append(folder)
     
     for video_folder in video_folders:
-        single_folder = []
+        single_folder = [] # contains all mp4 paths per folder
         for video_file in video_folder.glob('*.mp4'):
             # Find all mp4 files within a single video folder
             single_folder.append(video_file)
@@ -69,6 +70,7 @@ def analyze_new(videos_folders_path: Path, cfg_path: Path) -> None:
                 deeplabcut.analyze_videos(config_path, str(video_file), save_as_csv=True)
                 deeplabcut.filterpredictions(config_path, str(video_file), save_as_csv=True)
 
+                # Not used 
                 # deeplabcut.create_labeled_video(config_path, [str(single_folder[i])], videotype='.mp4', filtered=True)
     
 

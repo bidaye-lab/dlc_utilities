@@ -1,3 +1,7 @@
+"""
+visualization.py: code to generate VMD visualization from anipose 3D annotation CSV
+"""
+
 __author__ = "Nico Spiller"
 
 
