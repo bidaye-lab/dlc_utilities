@@ -158,7 +158,7 @@ def fix_point(df:pd.DataFrame, col_name: str, n: int = 1) -> pd.DataFrame:
     
     return df
 
-def remove_cols(df:pd.DataFrame, start: str = "", end: str = "", ) -> pd.DataFrame:
+def remove_cols(df:pd.DataFrame, start: str = "") -> pd.DataFrame:
     """Remove columns in a DEEPLABCUT CSV based on second rows (bodyparts).
         This is useful when certain joints are badly tracked.
 
@@ -168,8 +168,6 @@ def remove_cols(df:pd.DataFrame, start: str = "", end: str = "", ) -> pd.DataFra
         Panda DataFrame representing CSV data 
     start : str, optional
         Remove column if name starts with given string, by default ""
-    end : str, optional
-        Remove column if name ends with given string, by default ""
 
     Returns
     -------
@@ -182,12 +180,6 @@ def remove_cols(df:pd.DataFrame, start: str = "", end: str = "", ) -> pd.DataFra
         cols = df.loc[ :, df.loc[1, :].apply(lambda x: str(x).startswith(start)) ].columns # find cols with the particular start string
         df = df.drop(columns=cols)
         logging.info(' removed {} columns starting with {}'.format(len(cols), start))
-
-    # filter columns based on end of name
-    if end:
-        cols = df.loc[ :, df.loc[1, :].apply(lambda x: str(x).endswith(end)) ].columns # find cols with the particular end string
-        df = df.loc[:, cols]
-        logging.info(' removed {} columns ending with {}'.format(len(cols), end))
 
     return df
 
@@ -225,14 +217,14 @@ def clean_dfs(p_csv: Path) -> pd.DataFrame:
     logging.info("Running `Remove cols` preprocessing...")
     camName = p_csv.name[0] # Camera letter name
     start = ''
-    end = ''
+    #TODO: remove end from here and function, since unused
     if camName == 'B':
         logging.info("camName `B`, removing cols starting with `L-`")
         start = 'L-' # Remove col if start of name matches string
     if camName == 'E':
         logging.info("camName `E`, removing cols starting with `R-`")
         start = 'R-' # Remove col if start of name matches string
-    csv_df = remove_cols(csv_df, start, end)
+    csv_df = remove_cols(csv_df, start)
         
     return csv_df
 
@@ -460,9 +452,6 @@ def run_preprocessing(videos: Path, p_networks: Path, p_common_files: Path = Pat
             processed_dirs[parent_dir] = [processed_csv] # Create list of processed CSVs under that parent directory
 
     # Generate anipose file structure
-    # p_calibration_target = Path(r"./common_files/calibration_target.yml") # calibration target config file 
-    # p_calibration_timeline = Path(r"./common_files/calib_timeline.yml") # calibration timeline config file
-    # p_gcam_dummy = Path(r"./common_files/GenotypeFly-G.h5") # Dummy file for G camera (top-down view)
     p_calibration_target = p_common_files / 'calibration_target.yml'
     p_calibration_timeline = p_common_files / 'calibration_timeline'
     p_gcam_dummy = p_common_files / 'GenotypeFly-G.h5'
