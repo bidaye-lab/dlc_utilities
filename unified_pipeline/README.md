@@ -12,6 +12,7 @@ Combines previous DLC, preprocessing, and Anipose scripts into one pipeline to m
 1. Run through the `DLC_pipeline` notebook, making sure to enter values into any user variables (these will be pointed out by comments).
     - Use the `DEEPLABCUT` environment you created.
     - All config and other common files should be stored in `./common_files` (relative to script)
+    - Configuration files include `calibration_target.yml`, `calibration_timeline.yml`, `GenotypeFly-G.h5`, `config_fly.toml` or `config_board.toml`, `dlc_networks.yml` (Names should be exact for now, since some are hardcoded in.)
     - Remember that this pipeline only works for ball data.
 2. Run through the `Anipose_pipeline` notebook, making sure to enter values into any user variables.
     - Use the `anipose` environment you created.
