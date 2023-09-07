@@ -452,7 +452,7 @@ def run_preprocessing(videos: Path, p_networks: Path, p_common_files: Path = Pat
             processed_dirs[parent_dir] = [processed_csv] # Create list of processed CSVs under that parent directory
 
     # Generate anipose file structure
-    p_calibration_target = p_common_files / 'calibration_target.yml'
+    p_calibration_target = p_common_files / 'calib_timeline.yml'
     p_calibration_timeline = p_common_files / 'calibration_timeline'
     p_gcam_dummy = p_common_files / 'GenotypeFly-G.h5'
 
