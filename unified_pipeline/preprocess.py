@@ -469,7 +469,7 @@ def run_preprocessing(videos: Path, p_networks: Path, p_common_files: Path = Pat
 
     if not error:
         logging.info("Generating anipose files...")
-        for parent_dir, processed_csvs in processed_dirs:
+        for parent_dir, processed_csvs in processed_dirs.items():
             if not gen_anipose_files(parent_dir, p_networks, p_calibration_target, p_calibration_timeline, processed_csvs, p_gcam_dummy):
                 # TODO: gen_anipose_files needs to return somethng when it finishes (maybe directory where it was generated)
                 print(f"[WARNING] Skipped anipose generation for {parent_dir}")
