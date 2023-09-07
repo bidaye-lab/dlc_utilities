@@ -17,3 +17,9 @@ Combines previous DLC, preprocessing, and Anipose scripts into one pipeline to m
 2. Run through the `Anipose_pipeline` notebook, making sure to enter values into any user variables.
     - Use the `anipose` environment you created.
 
+## For development
+
+- Make sure hardcoded root path matches
+- To rerun Anipose preprocessing delete the generated `Anipose` folder only!
+- If you run DLC I would recommend to backup the DLC output so you can rerun the preprocessing steps without rerunning DLC every time
+- If DLC Has already been run don't rerun the DLC cell otherwise it will take several hours to run
