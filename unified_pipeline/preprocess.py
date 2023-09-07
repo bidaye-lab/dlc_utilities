@@ -74,9 +74,9 @@ def get_calibration_type(p_calibration_target: Path, p_project_dir: Path):
     board_paths = calibration_target_config['board'] # all the file paths that use a board calibration
     fly_paths = calibration_target_config['fly'] # all the file paths that use a fly calibration
 
-    if any(str(p_project_dir) == path or Path(path) in p_project_dir.parents  for path in board_paths):
+    if board_paths and any(str(p_project_dir) == path or Path(path) in p_project_dir.parents  for path in board_paths):
         return "board"
-    elif any(str(p_project_dir) == path or Path(path) in p_project_dir.parents  for path in fly_paths):
+    elif fly_paths and any(str(p_project_dir) == path or Path(path) in p_project_dir.parents  for path in fly_paths):
         return "fly"
     else:
         return None
