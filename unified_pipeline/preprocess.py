@@ -17,7 +17,7 @@ from datetimerange import DateTimeRange
 
 
 
-root = Path(r"C:\Users\ryabinkyj\Documents\testanalyze\RawData")
+root = Path(r"\\mpfi.org\public\sb-lab\DLC_pipeline_Dummy\0_QualityCtrl")
 
 def create_file_name(path: Path, root: Path) -> Path:
     """Create appropriate filename from a path for each data file in the format GenotypeFlynum-camName, e.g: for camA in the BPN dataset, for fly N0, filename: BPNN1-A
