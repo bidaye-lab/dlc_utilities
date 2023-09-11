@@ -38,39 +38,53 @@ def analyze_new(videos_folders_path: Path, cfg_path: Path) -> None:
     }
     """
 
-   
-    #TODO: Add checks that DLC hasn't been run in a folder (with that particular network set) before running DLC
-    video_folders = []
-    # Find all ball folders (Nx / Ball / Video files)
-    for folder in videos_folders_path.glob('**/Ball'):
-        video_folders.append(folder)
-    
+    # all folders to analyze (Nx / Ball / Video files)
+    video_folders = [ *videos_folders_path.glob('**/N*/Ball') ]
+
+    # cycle through all video folders
     for video_folder in video_folders:
-        single_folder = [] # contains all mp4 paths per folder
-        for video_file in video_folder.glob('*.mp4'):
-            # Find all mp4 files within a single video folder
-            single_folder.append(video_file)
+        print()
+
+        # all mp4 files
+        video_files = [ *video_folder.glob('*.mp4') ] 
+        logging.info(f"Found {len(video_files)} MP4 files in {video_folder}")
 
         # Run DLC on each video file within the current video folder
-        for i, video_file in enumerate(single_folder):
-            logging.info(f"current movie {video_file.name}")
-            cam_type = str(video_file.name)[0]
-            if cam_type not in model_paths:
-                logging.warning(f"Skipping video file, invalid camera type or movie file name {video_file.name}")
-            elif cam_type == 'G':
-                # Top-down view (Camera G) is ignored 
+        for video_file in video_files:
+
+            logging.info(f"Analyzing movie: {video_file.name}")
+
+            # string before first '-' is camera name
+            cam_type = video_file.name.split('-')[0]
+            if cam_type not in model_paths:  # check if model is defined
+                logging.warning(f"Skipping video file: invalid camera type or movie file name")
                 continue
-            else:
-                logging.info(f"Camera: {cam_type}")
-                logging.info(f"Model path: {model_paths[cam_type]}")
-                logging.info("Video file path:", single_folder[i])
-                config_path = Path(model_paths[cam_type]) / 'config.yaml' # path to the DLC config for that particular network
-                logging.info(f"DLC Config path {config_path}\n")
+            elif cam_type == 'G': # Top-down view (Camera G) is ignored 
+                logging.info("Skipping video file: Camera G") 
+                continue
 
-                deeplabcut.analyze_videos(config_path, str(video_file), save_as_csv=True)
-                deeplabcut.filterpredictions(config_path, str(video_file), save_as_csv=True)
+            # path to the DLC config for that particular network
+            config_path = Path(model_paths[cam_type]) / 'config.yaml'
+            if not config_path.is_file():
+                logging.info('Skipping video file: config file does not exist')
 
-                # Not used 
-                # deeplabcut.create_labeled_video(config_path, [str(single_folder[i])], videotype='.mp4', filtered=True)
-    
+            #TODO: Add checks that DLC hasn't been run in a folder (with that particular network set) before running DLC
+            # get model name
+            model_folder = config_path.parent
+            model_csv = next(model_folder.glob('evaluation-results/iteration-*/*/*-results.csv'))
+            model_name = model_csv.name.replace('-results.csv', '')
+            # check if video already has been analyzed with given model
+            output = video_file.parent / f'{video_file.stem}{model_name}_filtered.csv'
+            if output.is_file():
+                logging.info('Skipping video file: *_filtered.cvs file already exists')
+                continue
 
+            # additional logging
+            logging.info(f"Camera: {cam_type}")
+            logging.info(f"DLC Config path: {config_path}")
+            logging.info(f"Model path: {model_paths[cam_type]}")
+            logging.info(f"Video file path: {video_file}")
+
+            # run DLC
+            deeplabcut.analyze_videos(config_path, str(video_file), save_as_csv=True)
+            deeplabcut.filterpredictions(config_path, str(video_file), save_as_csv=True)
