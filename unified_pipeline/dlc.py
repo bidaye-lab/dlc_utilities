@@ -70,16 +70,23 @@ def analyze_new(videos_folders_path: Path, network_sets_path: Path) -> None:
             if not model_config_path.is_file():
                 logging.info('Skipping video file: config file does not exist')
 
-            #TODO: Add checks that DLC hasn't been run in a folder (with that particular network set) before running DLC
-            # get model name
-            model_folder = model_config_path.parent
-            model_csv = next(model_folder.glob('evaluation-results/iteration-*/*/*-results.csv'))
-            model_name = model_csv.name.replace('-results.csv', '')
-            # check if video already has been analyzed with given model
-            output = video_file.parent / f'{video_file.stem}{model_name}_filtered.csv'
-            if output.is_file():
-                logging.info('Skipping video file: *_filtered.cvs file already exists')
-                continue
+            # determine model name
+            model_config = utils.load_config(model_config_path) # read dlc cfg to get `iteration`
+            n_iteration = model_config['iteration']
+            model_folder = model_config_path.parent / f'evaluation-results/iteration-{n_iteration}/'
+            csvs = [ *model_folder.glob('*/*-results.csv')] # this should only find one CSV file
+            if len(csvs) != 1:
+                logging.warning('Could not determine model name, skipping check ')
+            else:
+                # get model name from CSV name
+                model_csv = csvs[0]
+                model_name = model_csv.name.replace('-results.csv', '')
+
+                # check if video already has been analyzed with given model
+                output = video_file.parent / f'{video_file.stem}{model_name}_filtered.csv'
+                if output.is_file():
+                    logging.info('Skipping video file: *_filtered.cvs file already exists')
+                    continue
 
             # additional logging
             logging.info(f"Camera: {cam_type}")
