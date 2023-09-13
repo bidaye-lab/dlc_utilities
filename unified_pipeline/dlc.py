@@ -56,19 +56,22 @@ def analyze_new(videos_folders_path: Path, network_sets_path: Path) -> None:
 
             logging.info(f"Analyzing movie: {video_file.name}")
 
-            # string before first '-' is camera name
-            cam_type = video_file.name.split('-')[0]
-            if cam_type not in model_paths:  # check if model is defined
-                logging.warning(f"Skipping video file: invalid camera type or movie file name")
-                continue
-            elif cam_type == 'G': # Top-down view (Camera G) is ignored 
-                logging.info("Skipping video file: Camera G") 
+            # check if camera model is defined in `model_paths``
+            cam_type = video_file.name.split('-')[0]  # string before first '-' is camera name
+            try:
+                p = model_paths[cam_type]
+                if not p: # if model is defined but path empty
+                    logging.info(f"Skipping video file: model path empty for Camera {cam_type}")
+                    continue
+            except KeyError: # if model is not defined
+                logging.warning(f"Skipping video file:  model path not defined for Camera {cam_type}")
                 continue
 
             # path to the DLC config for that particular network
             model_config_path = Path(model_paths[cam_type]) / 'config.yaml'
             if not model_config_path.is_file():
-                logging.info('Skipping video file: config file does not exist')
+                logging.warning(f'Skipping video file: config file does not exist at {model_config_path}')
+                continue
 
             # determine model name
             model_config = utils.load_config(model_config_path) # read dlc cfg to get `iteration`
