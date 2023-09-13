@@ -39,7 +39,9 @@ def analyze_new(videos_folders_path: Path, cfg_path: Path) -> None:
     """
 
     # all folders to analyze (Nx / Ball / Video files)
+    logging.info(f"Searching through {videos_folders_path}")
     video_folders = [ *videos_folders_path.glob('**/N*/Ball') ]
+    logging.info(f"Found {len(video_folders)} Ball folders")
 
     # cycle through all video folders
     for video_folder in video_folders:
@@ -47,7 +49,7 @@ def analyze_new(videos_folders_path: Path, cfg_path: Path) -> None:
 
         # all mp4 files
         video_files = [ *video_folder.glob('*.mp4') ] 
-        logging.info(f"Found {len(video_files)} MP4 files in {video_folder}")
+        logging.info(f"Found {len(video_files)} MP4 files")
 
         # Run DLC on each video file within the current video folder
         for video_file in video_files:
