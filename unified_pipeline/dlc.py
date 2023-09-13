@@ -9,7 +9,7 @@ from pathlib import Path
 import utils 
 
 # DLC Generation
-def analyze_new(videos_folders_path: Path, cfg_path: Path) -> None:
+def analyze_new(videos_folders_path: Path, network_sets_path: Path) -> None:
     """Run appropriate model with DLC on each video
 
     Parameters
@@ -17,12 +17,12 @@ def analyze_new(videos_folders_path: Path, cfg_path: Path) -> None:
     videos_folders_path : Path
         File path to genotype directory with experiment videos
     
-    cfg_path : Path
+    network_sets_path : Path
         File path to the config file containing model paths
     """
 
-    cfg = utils.load_config(cfg_path)
-    model_paths = cfg['Ball'] # network_local is dev
+    network_sets = utils.load_config(network_sets_path)
+    model_paths = network_sets['Ball'] # network_local is dev
 
     """ network_local: 
 
@@ -66,13 +66,13 @@ def analyze_new(videos_folders_path: Path, cfg_path: Path) -> None:
                 continue
 
             # path to the DLC config for that particular network
-            config_path = Path(model_paths[cam_type]) / 'config.yaml'
-            if not config_path.is_file():
+            model_config_path = Path(model_paths[cam_type]) / 'config.yaml'
+            if not model_config_path.is_file():
                 logging.info('Skipping video file: config file does not exist')
 
             #TODO: Add checks that DLC hasn't been run in a folder (with that particular network set) before running DLC
             # get model name
-            model_folder = config_path.parent
+            model_folder = model_config_path.parent
             model_csv = next(model_folder.glob('evaluation-results/iteration-*/*/*-results.csv'))
             model_name = model_csv.name.replace('-results.csv', '')
             # check if video already has been analyzed with given model
@@ -83,10 +83,10 @@ def analyze_new(videos_folders_path: Path, cfg_path: Path) -> None:
 
             # additional logging
             logging.info(f"Camera: {cam_type}")
-            logging.info(f"DLC Config path: {config_path}")
+            logging.info(f"DLC Config path: {model_config_path}")
             logging.info(f"Model path: {model_paths[cam_type]}")
             logging.info(f"Video file path: {video_file}")
 
             # run DLC
-            deeplabcut.analyze_videos(config_path, str(video_file), save_as_csv=True)
-            deeplabcut.filterpredictions(config_path, str(video_file), save_as_csv=True)
+            deeplabcut.analyze_videos(model_config_path, str(video_file), save_as_csv=True)
+            deeplabcut.filterpredictions(model_config_path, str(video_file), save_as_csv=True)
