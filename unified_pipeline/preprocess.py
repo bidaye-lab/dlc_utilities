@@ -427,7 +427,6 @@ def run_preprocessing(videos: Path, p_networks: Path, p_common_files: Path = Pat
         Path to the common files folder, contains all config files, by default Path(r"./common_files")
     """
     #TODO: get network name from common files like everything else
-    error = False
 
     # find all the CSVs that DLC generated
     processed_dirs = {} # Will contain a dictionary with the filepath: list of tuples in form (csv_df, p_csv)
@@ -457,23 +456,14 @@ def run_preprocessing(videos: Path, p_networks: Path, p_common_files: Path = Pat
     p_gcam_dummy = p_common_files / 'GenotypeFly-G.h5'
 
     # check that all the files exist
-    if not p_calibration_target.exists():
-        logging.error("`calibration_target.yml` does not exist.")
-        error = True
-    if not p_calibration_timeline.exists():
-        logging.error("`calib_timeline.yml` does not exist.")
-        error = True
-    if not p_gcam_dummy.exists():
-        logging.error("`GenotypeFly-G.h5` (G camera dummy file) does not exist.")
-        error = True
+    for p in [ p_calibration_target, p_calibration_timeline, p_gcam_dummy ]:
+        if not p.exists():
+            raise FileNotFoundError(f"{p} does not exist.")
 
-    if not error:
-        logging.info("Generating anipose files...")
-        for parent_dir, processed_csvs in processed_dirs.items():
-            if not gen_anipose_files(parent_dir, p_networks, p_calibration_target, p_calibration_timeline, processed_csvs, p_gcam_dummy):
-                # TODO: gen_anipose_files needs to return somethng when it finishes (maybe directory where it was generated)
-                print(f"[WARNING] Skipped anipose generation for {parent_dir}")
-        print('Finished preprocessing...')
-    else:
-        print("Terminated due to error...")
+    logging.info("Generating anipose files...")
+    for parent_dir, processed_csvs in processed_dirs.items():
+        if not gen_anipose_files(parent_dir, p_networks, p_calibration_target, p_calibration_timeline, processed_csvs, p_gcam_dummy):
+            # TODO: gen_anipose_files needs to return somethng when it finishes (maybe directory where it was generated)
+            print(f"[WARNING] Skipped anipose generation for {parent_dir}")
+    print('Finished preprocessing...')
 
