@@ -14,7 +14,9 @@ def run_anipose_commands():
     commands = ['anipose filter', 'anipose triangulate', 'anipose angles']    
     for command in commands: # run all commands
         logging.info(f'Running {command}')
-        process = subprocess.run(command.split(), check=True)
+        process = subprocess.run(command.split(), check=False, capture_output=True)
+        logging.info('STDERR:\n' + process.stderr.decode('UTF-8'))
+        logging.info('STDOUT:\n' + process.stdout.decode('UTF-8'))
         if process.returncode != 0:
             logging.critical(f'Command {command} failed with return code {process.returncode}')
             break
