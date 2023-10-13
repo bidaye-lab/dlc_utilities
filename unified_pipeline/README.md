@@ -9,6 +9,12 @@ Combines previous DLC, preprocessing, and Anipose scripts into one pipeline to m
 2. Install [Anipose](https://anipose.readthedocs.io/en/latest/installation.html)
     - TODO install `jupyterlab` or similar to use jupyter notebooks
 
+Note: Anipose may not be compatible with more recent default openCV installations. Installation with openCV 4.6 was tested. In case of trouble with openCV, run
+```
+conda activate anipose
+pip install opencv-python==4.6.0.66
+pip install opencv-contrib-python==4.6.0.66
+```
 
 ## Usage
 
