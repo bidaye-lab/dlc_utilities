@@ -215,7 +215,7 @@ def clean_dfs(p_csv: Path) -> pd.DataFrame:
         Processed CSV as a DF
     """
     logging.info(f"Processing {p_csv.name}")
-    csv_df = utils.load_csv_as_df(p_csv)
+    csv_df = utils.load_csv_as_df(p_csv) # Flat CSV (req'd for current method of preprocessing)
 
     # Fix points
     logging.info(" Running `Fix points` preprocessing...")
