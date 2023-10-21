@@ -156,18 +156,23 @@ def fix_point(df: pd.DataFrame, col_name: str, n: int = 1) -> pd.DataFrame:
     """
 
     # select columns of interests and here only values
-    c = df.loc[3:, df.loc[1, :] == col_name].astype(float)
+    cols = [c for c in df.loc[1, :] if c == col_name]
+    print(f"DEBUG:  # of cols selected is {len(cols)}")
+
+    c = df.loc[3:,df.loc[1, :].isin(cols)].astype(float) # select columns of interests and here only values
+    print(f"DEBUG selected {len(c.columns)} in total")
 
     if n > 0:
-        x = c.iloc[n-1, :]  # select value (python starts counting at 0)
+        x = c.iloc[n-1, :] # select value index
+        logging.info(f'Replacing column values with {n}th value...')
     else:
-        x = c.mean()  # calculate mean
+        x = c.mean() # calculate mean
+        logging.info('Replacing column values with mean...')
 
-    # replace all non-nan values with x
-    c.where(c.isnull(), x, axis=1, inplace=True)
-    logging.info(f"value in {col_name} replaced with {x.values}")
+    for i in x.index:
+        c.loc[:, i] = x.loc[i]
 
-    df.loc[c.index, c.columns] = c  # merge back to full dataframe
+    df.loc[c.index, c.columns] = c # merge back to full dataframe
 
     return df
 
