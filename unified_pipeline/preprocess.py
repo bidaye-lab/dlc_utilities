@@ -135,7 +135,7 @@ def get_anipose_calibration_files(p_calibration_target: Path, p_calibration_time
     return output_files
 
 
-def fix_point(df: pd.DataFrame, col_name: str, n: int = 1) -> pd.DataFrame:
+def fix_point(df: pd.DataFrame, col_names: list, n: int = 1) -> pd.DataFrame:
     """Replace all values in a DataFrame corresponding to DLC CSV data with one value. 
     This is useful for a point that should stay fixed. Missing values are conserved. 
     Original file is overwritten.
@@ -156,7 +156,8 @@ def fix_point(df: pd.DataFrame, col_name: str, n: int = 1) -> pd.DataFrame:
     """
 
     # select columns of interests and here only values
-    cols = [c for c in df.loc[1, :] if c == col_name]
+    print('DEBUG selecting columns for {}'.format(' '.join(col_names)))
+    cols = [c for c in df.loc[1, :] if c in col_names]
     print(f"DEBUG:  # of cols selected is {len(cols)}")
 
     c = df.loc[3:,df.loc[1, :].isin(cols)].astype(float) # select columns of interests and here only values
@@ -232,9 +233,7 @@ def clean_dfs(p_csv: Path) -> pd.DataFrame:
         'Notum',
     ]
     n = 0  # Values will be replaced with the nth entry. To replace with the mean, use n=0
-    for name in col_names:
-        logging.info(f" Matching string {name}")
-        csv_df = fix_point(csv_df, name, n)
+    csv_df = fix_point(csv_df, col_names, n)
 
     # Remove cols
     logging.info("Running `Remove cols` preprocessing...")
