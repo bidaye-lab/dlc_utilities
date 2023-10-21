@@ -248,8 +248,16 @@ def clean_dfs(p_csv: Path) -> pd.DataFrame:
         start = 'R-'  # Remove col if start of name matches string
     csv_df = remove_cols(csv_df, start)
 
-    return csv_df
+    # return csv_df     # !! in the future change back, file write is a fix to support multi-indexed DF for now
 
+    write_name = f"{p_csv.name}_preprocessed"
+    write_path = p_csv.with_name(write_name)
+    logging.info(f"Writing file to {write_path}")
+    logging.info(f"NOTE: in the future, this should be changed to not use a file write.")
+    csv_df.to_csv(write_path, header=None, index=False)
+    logging.info(f"File written")
+
+    return write_path
 
 def df2hdf(df: pd.DataFrame, csv_path: Path, write_path: Path, root: Path = root) -> None:
     """Convert pandas DF provided to hdf format and save with proper name format 
@@ -339,15 +347,29 @@ def traverse_dirs(directory_structure: dict, parent_dir: Path, path: Path = Path
                     logging.warning(
                         f"Skipping {file}, all files in `filescp` should be paths")
         elif parent == 'filescv':  # convert files in child list
-            for df, csv_path in child:
-                # The DF should only be written to the Nx folder it was taken from,
-                # check that DF original Nx folder matches the current path
+            #! revert to code below when temp fix of writing to csv after preprocessing is changed back to keeping as DF until the very end
+            # for df, csv_path in child:
+            #     # The DF should only be written to the Nx folder it was taken from,
+            #     # check that DF original Nx folder matches the current path
+            #     csv_nx = csv_path.parent.parent.name  # Nx folder for the original CSV
+            #     current_nx_dir = path.parent.name  # Nx dir currently being traversed
+            #     # Check that parent directory and Nx folder are the same
+            #     if parent_dir in csv_path.parents and csv_nx == current_nx_dir:
+
+            #         df2hdf(df, csv_path, path, root)
+            
+
+            for csv_path in child:
+                # Reads preprocess CSV in with multiindexed format
+                df = pd.read_csv(csv_path, index_col=0, header=[0, 1, 2])
+                df.columns.set_levels([df.columns[0][0]], level='scorer')
+
                 csv_nx = csv_path.parent.parent.name  # Nx folder for the original CSV
                 current_nx_dir = path.parent.name  # Nx dir currently being traversed
-                # Check that parent directory and Nx folder are the same
-                if parent_dir in csv_path.parents and csv_nx == current_nx_dir:
 
+                if parent_dir in csv_path.parents and csv_nx == current_nx_dir:
                     df2hdf(df, csv_path, path, root)
+
         elif parent == 'filesmk' and child:  # Create the file if only the file name provided
             for file in child:
                 filepath = path / file
@@ -494,7 +516,9 @@ def run_preprocessing(videos: Path, p_networks: Path,
         # Fix points, remove columns
         csv_df = clean_dfs(p_csv)
 
-        processed_csv = (csv_df, p_csv)
+        # processed_csv = (csv_df, p_csv) #! revert later, temp fix where file is re-written as csv to later be read in as multi-indexed
+        processed_csv = p_csv
+
         if parent_dir in processed_dirs:
             # Append to list of processed CSVs under that parent directory
             processed_dirs[parent_dir].append(processed_csv)
