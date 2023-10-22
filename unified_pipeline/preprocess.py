@@ -250,8 +250,8 @@ def clean_dfs(p_csv: Path) -> pd.DataFrame:
 
     # return csv_df     # !! in the future change back, file write is a fix to support multi-indexed DF for now
 
-    write_name = f"{p_csv.name}_preprocessed"
-    write_path = p_csv.with_name(write_name)
+    write_name = f"{p_csv.stem}_preprocessed"
+    write_path = p_csv.with_name(write_name).with_suffix(".csv")
     logging.info(f"Writing file to {write_path}")
     logging.info(f"NOTE: in the future, this should be changed to not use a file write.")
     csv_df.to_csv(write_path, header=None, index=False)
