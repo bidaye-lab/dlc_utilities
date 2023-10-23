@@ -135,7 +135,7 @@ def get_anipose_calibration_files(p_calibration_target: Path, p_calibration_time
     return output_files
 
 
-def fix_point(df: pd.DataFrame, col_name: str, n: int = 1) -> pd.DataFrame:
+def fix_point(df: pd.DataFrame, col_names: list, n: int = 1) -> pd.DataFrame:
     """Replace all values in a DataFrame corresponding to DLC CSV data with one value. 
     This is useful for a point that should stay fixed. Missing values are conserved. 
     Original file is overwritten.
@@ -156,18 +156,24 @@ def fix_point(df: pd.DataFrame, col_name: str, n: int = 1) -> pd.DataFrame:
     """
 
     # select columns of interests and here only values
-    c = df.loc[3:, df.loc[1, :] == col_name].astype(float)
+    print('DEBUG selecting columns for {}'.format(' '.join(col_names)))
+    cols = [c for c in df.loc[1, :] if c in col_names]
+    print(f"DEBUG:  # of cols selected is {len(cols)}")
+
+    c = df.loc[3:,df.loc[1, :].isin(cols)].astype(float) # select columns of interests and here only values
+    print(f"DEBUG selected {len(c.columns)} in total")
 
     if n > 0:
-        x = c.iloc[n-1, :]  # select value (python starts counting at 0)
+        x = c.iloc[n-1, :] # select value index
+        logging.info(f'Replacing column values with {n}th value...')
     else:
-        x = c.mean()  # calculate mean
+        x = c.mean() # calculate mean
+        logging.info('Replacing column values with mean...')
 
-    # replace all non-nan values with x
-    c.where(c.isnull(), x, axis=1, inplace=True)
-    logging.info(f"value in {col_name} replaced with {x.values}")
+    for i in x.index:
+        c.loc[:, i] = x.loc[i]
 
-    df.loc[c.index, c.columns] = c  # merge back to full dataframe
+    df.loc[c.index, c.columns] = c # merge back to full dataframe
 
     return df
 
@@ -215,7 +221,7 @@ def clean_dfs(p_csv: Path) -> pd.DataFrame:
         Processed CSV as a DF
     """
     logging.info(f"Processing {p_csv.name}")
-    csv_df = utils.load_csv_as_df(p_csv)
+    csv_df = utils.load_csv_as_df(p_csv) # Flat CSV (req'd for current method of preprocessing)
 
     # Fix points
     logging.info(" Running `Fix points` preprocessing...")
@@ -227,9 +233,7 @@ def clean_dfs(p_csv: Path) -> pd.DataFrame:
         'Notum',
     ]
     n = 0  # Values will be replaced with the nth entry. To replace with the mean, use n=0
-    for name in col_names:
-        logging.info(f" Matching string {name}")
-        csv_df = fix_point(csv_df, name, n)
+    csv_df = fix_point(csv_df, col_names, n)
 
     # Remove cols
     logging.info("Running `Remove cols` preprocessing...")
@@ -244,8 +248,16 @@ def clean_dfs(p_csv: Path) -> pd.DataFrame:
         start = 'R-'  # Remove col if start of name matches string
     csv_df = remove_cols(csv_df, start)
 
-    return csv_df
+    # return csv_df     # !! in the future change back, file write is a fix to support multi-indexed DF for now
 
+    write_name = f"{p_csv.stem}_preprocessed"
+    write_path = p_csv.with_name(write_name).with_suffix(".csv")
+    logging.info(f"Writing file to {write_path}")
+    logging.info(f"NOTE: in the future, this should be changed to not use a file write.")
+    csv_df.to_csv(write_path, header=None, index=False)
+    logging.info(f"File written")
+
+    return write_path
 
 def df2hdf(df: pd.DataFrame, csv_path: Path, write_path: Path, root: Path = root) -> None:
     """Convert pandas DF provided to hdf format and save with proper name format 
@@ -335,15 +347,29 @@ def traverse_dirs(directory_structure: dict, parent_dir: Path, path: Path = Path
                     logging.warning(
                         f"Skipping {file}, all files in `filescp` should be paths")
         elif parent == 'filescv':  # convert files in child list
-            for df, csv_path in child:
-                # The DF should only be written to the Nx folder it was taken from,
-                # check that DF original Nx folder matches the current path
+            #! revert to code below when temp fix of writing to csv after preprocessing is changed back to keeping as DF until the very end
+            # for df, csv_path in child:
+            #     # The DF should only be written to the Nx folder it was taken from,
+            #     # check that DF original Nx folder matches the current path
+            #     csv_nx = csv_path.parent.parent.name  # Nx folder for the original CSV
+            #     current_nx_dir = path.parent.name  # Nx dir currently being traversed
+            #     # Check that parent directory and Nx folder are the same
+            #     if parent_dir in csv_path.parents and csv_nx == current_nx_dir:
+
+            #         df2hdf(df, csv_path, path, root)
+            
+
+            for csv_path in child:
+                # Reads preprocess CSV in with multiindexed format
+                df = pd.read_csv(csv_path, index_col=0, header=[0, 1, 2])
+                df.columns.set_levels([df.columns[0][0]], level='scorer')
+
                 csv_nx = csv_path.parent.parent.name  # Nx folder for the original CSV
                 current_nx_dir = path.parent.name  # Nx dir currently being traversed
-                # Check that parent directory and Nx folder are the same
-                if parent_dir in csv_path.parents and csv_nx == current_nx_dir:
 
+                if parent_dir in csv_path.parents and csv_nx == current_nx_dir:
                     df2hdf(df, csv_path, path, root)
+
         elif parent == 'filesmk' and child:  # Create the file if only the file name provided
             for file in child:
                 filepath = path / file
@@ -490,7 +516,9 @@ def run_preprocessing(videos: Path, p_networks: Path,
         # Fix points, remove columns
         csv_df = clean_dfs(p_csv)
 
-        processed_csv = (csv_df, p_csv)
+        # processed_csv = (csv_df, p_csv) #! revert later, temp fix where file is re-written as csv to later be read in as multi-indexed
+        processed_csv = p_csv
+
         if parent_dir in processed_dirs:
             # Append to list of processed CSVs under that parent directory
             processed_dirs[parent_dir].append(processed_csv)
