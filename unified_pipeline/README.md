@@ -26,6 +26,9 @@ pip install opencv-contrib-python==4.6.0.66
 2. Run through the `Anipose_pipeline` notebook, making sure to enter values into any user variables.
     - Use the `anipose` environment you created.
 
+### Note
+The pipeline will find all folders (in the specified parent directory) that have ungenerated Anipose/DLC and run generation on all of them.
+
 ## For development
 
 - Make sure hardcoded root path matches
