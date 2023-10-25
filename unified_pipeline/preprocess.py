@@ -517,7 +517,7 @@ def run_preprocessing(videos: Path, p_networks: Path,
         csv_df = clean_dfs(p_csv)
 
         # processed_csv = (csv_df, p_csv) #! revert later, temp fix where file is re-written as csv to later be read in as multi-indexed
-        processed_csv = p_csv
+        processed_csv = csv_df #! Currently this is just a file path, i.e clean_dfs with fix currently returns the path that the CSV was written to
 
         if parent_dir in processed_dirs:
             # Append to list of processed CSVs under that parent directory
