@@ -11,6 +11,20 @@ import utils
 
 # ! This function is the exact same as the one in preprocess.py; we can decide on how to organize these functions later
 def get_calibration_type(p_calibration_target: Path, p_project_dir: Path):
+    """Return the calibration type of the directory based on the calibration_target file
+
+    Parameters
+    ----------
+    p_calibration_target : Path
+        File path to the calibration_target.yml file
+    p_project_dir : Path
+        File path to the directory to be checked for fly vs board-based
+
+    Returns
+    -------
+    String OR None
+        Returns a string "board" or "fly" if the directory provided is board-based or fly-based calibration respectively. Returns None and gives a logging error to the user if the directory is not inside calibration_target or is not a child of a path in calibration_target.
+    """
     calibration_target_config = utils.load_config(p_calibration_target)
 
     # all the file paths that use a board calibration
@@ -18,6 +32,7 @@ def get_calibration_type(p_calibration_target: Path, p_project_dir: Path):
     # all the file paths that use a fly calibration
     fly_paths = calibration_target_config['fly']
 
+    # Checks if the list of paths exists, then if the project_dir is exactly any of the paths in calibration_target, then if project_dir is a child of any paths in project_dir
     if board_paths and any(str(p_project_dir) == path or Path(path) in p_project_dir.parents for path in board_paths):
         return "board"
     elif fly_paths and any(str(p_project_dir) == path or Path(path) in p_project_dir.parents for path in fly_paths):
