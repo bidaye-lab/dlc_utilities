@@ -58,6 +58,9 @@ def run(parent_dir: Path) -> None:
     nx_dirs = utils.find_nx_dirs(parent_dir)
     for nxdir in nx_dirs: # run on all Nx dirs
         p_anipose = nxdir / 'anipose' 
+        if not p_anipose.exists():
+            logging.warning(f"Anipose directory does not exist, skipping {nxdir}")
+            continue
         logging.info(f"Found anipose directory {p_anipose}")
         for p_n1 in p_anipose.glob('**/N1'):
             p_network = p_n1.parent.parent # anipose\Ball\<name of network set>\project\N1
