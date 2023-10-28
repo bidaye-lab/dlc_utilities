@@ -203,7 +203,7 @@ def get_anipose_calibration_files(p_calibration_target: Path, p_calibration_time
             break
     else:
         logging.error(
-            f"Calibration type not specified in `{p_calibration_target}`")
+            f"The project date (`{project_date}`) of the directory `{p_project_dir}` does not fall into any date range in calibration_timeline: `{p_calibration_timeline}`")
         return
 
     output_files = []
@@ -253,12 +253,9 @@ def fix_point(df: pd.DataFrame, col_names: list, n: int = 1) -> pd.DataFrame:
     """
 
     # select columns of interests and here only values
-    print('DEBUG selecting columns for {}'.format(' '.join(col_names)))
     cols = [c for c in df.loc[1, :] if c in col_names]
-    print(f"DEBUG:  # of cols selected is {len(cols)}")
 
     c = df.loc[3:,df.loc[1, :].isin(cols)].astype(float) # select columns of interests and here only values
-    print(f"DEBUG selected {len(c.columns)} in total")
 
     if n > 0:
         x = c.iloc[n-1, :] # select value index
@@ -521,6 +518,10 @@ def gen_anipose_files(parent_dir: Path, p_network_cfg: Path, p_calibration_targe
     if not calibration_files:  # calib files could not be found
         logging.error("Calibration files not found")
         return
+
+    # TODO: add if fly based, then append mp4s to calibration files
+    # TODO: Alternatively, in the dictionary structure, add a filesmk
+
 
     # Generate `project` folder structure for anipose
     project = {}
