@@ -45,16 +45,12 @@ def get_calibration_type(p_calibration_target: Path, p_project_dir: Path):
 
 def run_anipose_commands(wdir, p_calibration_target: Path, p_project_dir: Path):
     is_fly_based = get_calibration_type(p_calibration_target, p_project_dir) == "fly"
-    print(f"DEBUG fly based {is_fly_based}")
 
     commands = (['anipose filter', 'anipose calibrate', 'anipose triangulate', 'anipose angles'] if is_fly_based 
                 else ['anipose filter', 'anipose triangulate', 'anipose angles'])
-    print(f"DEBUG commands {commands}")
 
     for command in commands: # run all commands
         logging.info(f'Running {command}')
-        print(f"WDIR = {wdir}")
-        print(f"WDIR  {wdir.exists()}")
         process = subprocess.run(command.split(), cwd=wdir, check=False, capture_output=True)
 
         logging.info('STDERR:\n' + process.stderr.decode('UTF-8'))
@@ -75,7 +71,6 @@ def run(parent_dir: Path) -> None:
 
     num_run = 0 # number of times anipose has been run (essentially number of dirs modified)
     nx_dirs = utils.find_nx_dirs(parent_dir)
-    print(f"DEBUG nxdirs {nx_dirs}")
     for nxdir in nx_dirs: # run on all Nx dirs
         p_anipose = nxdir / 'anipose' 
         if not p_anipose.exists():
