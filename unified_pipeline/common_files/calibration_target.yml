@@ -4,6 +4,7 @@ board:
   - \\mpfi.org\public\sb-lab\BallSystem_RawData\29_P9_DiffOpsins\20xCsChrim-P9-1540
   - \\mpfi.org\public\sb-lab\BallSystem_RawData\29_P9_DiffOpsins\5xCsChrimson-P9-1540
   - C:\Users\ryabinkyj\Documents\testanalyze\RawData\BIN-1
+  - \\mpfi.org\public\sb-lab\DLC_pipeline_Dummy\0_QualityCtrl\Raw_vid\1_FOMOxES_decap
 
 fly:
   - \\mpfi.org\public\sb-lab\BallSystem_RawData\29_P9_DiffOpsins\P9-S2X20xCSChrimson

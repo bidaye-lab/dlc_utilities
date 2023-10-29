@@ -207,6 +207,7 @@ def get_anipose_calibration_files(p_calibration_target: Path, p_calibration_time
         return
 
     output_files = []
+    p_common_files = './common_files'
     if p_calibration_files and p_calibration_files.exists():  # calibration file dir found
         calibration_type = get_calibration_type(
             p_calibration_target, p_project_dir)
@@ -214,13 +215,25 @@ def get_anipose_calibration_files(p_calibration_target: Path, p_calibration_time
             p_calibration_files.glob('**/detections.pickle'))
         p_calibration_toml = next(
             p_calibration_files.glob('**/calibration.toml'))
+
+
         if calibration_type == 'board':
             # Board calibration needs both files
             output_files.append(p_detection_pickle)
             output_files.append(p_calibration_toml)
         elif calibration_type == 'fly':
+            p_calib_movies = list(p_common_files.glob("*.mp4"))
+            # DEBUG
+            print(f"DEBUG: p_common_files -- {p_common_files}")
+            print(f"DEBUG: p_calib_movies -- {p_calib_movies}")
+
             # Fly-based calibration only requires detections.pickle
             output_files.append(p_detection_pickle)
+            print(f"DEBUG: appending detections.pickle")
+            print(f"DEBUG: output files -- {output_files}")
+            # Fly-based requires calibration movies 
+            print(f"DEBUG: appending calib_movies")
+            output_files.append(p_calib_movies)
         else:
             logging.error(
                 f"Invalid calibration type or calibration type not specified in `{p_calibration_target}")
