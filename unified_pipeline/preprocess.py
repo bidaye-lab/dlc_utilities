@@ -157,9 +157,13 @@ def to_dt(date_string: str, time: bool = False) -> datetime:
 
 
 def get_date_time(p_project_dir: Path) -> datetime:
-    # the first mp4 found, used to get date range
-    mp4 = next(p_project_dir.glob('**/*.mp4'))
     # name format B-4182023151132-0000
+
+    mp4_files = [file for file in p_project_dir.glob('**/*.mp4') if file.name.count('-') >= 2] # Excludes the `calib-A` etc. calibration movies from the search
+    if not mp4_files:
+        raise ValueError("No valid .mp4 files found in the directory")
+    
+    mp4 = mp4_files[0] # First valid mp4 file, used to get datetime range
     mp4_name = mp4.name
     date_time_string = mp4_name.split('-')[1]
 
@@ -207,7 +211,7 @@ def get_anipose_calibration_files(p_calibration_target: Path, p_calibration_time
         return
 
     output_files = []
-    p_common_files = './common_files'
+    p_common_files = Path('./common_files')
     if p_calibration_files and p_calibration_files.exists():  # calibration file dir found
         calibration_type = get_calibration_type(
             p_calibration_target, p_project_dir)
@@ -223,17 +227,11 @@ def get_anipose_calibration_files(p_calibration_target: Path, p_calibration_time
             output_files.append(p_calibration_toml)
         elif calibration_type == 'fly':
             p_calib_movies = list(p_common_files.glob("*.mp4"))
-            # DEBUG
-            print(f"DEBUG: p_common_files -- {p_common_files}")
-            print(f"DEBUG: p_calib_movies -- {p_calib_movies}")
 
             # Fly-based calibration only requires detections.pickle
             output_files.append(p_detection_pickle)
-            print(f"DEBUG: appending detections.pickle")
-            print(f"DEBUG: output files -- {output_files}")
             # Fly-based requires calibration movies 
-            print(f"DEBUG: appending calib_movies")
-            output_files.append(p_calib_movies)
+            output_files += p_calib_movies # merges the two lists together
         else:
             logging.error(
                 f"Invalid calibration type or calibration type not specified in `{p_calibration_target}")
@@ -532,8 +530,6 @@ def gen_anipose_files(parent_dir: Path, p_network_cfg: Path, p_calibration_targe
         logging.error("Calibration files not found")
         return
 
-    # TODO: add if fly based, then append mp4s to calibration files
-    # TODO: Alternatively, in the dictionary structure, add a filesmk
 
 
     # Generate `project` folder structure for anipose
@@ -621,7 +617,7 @@ def run_preprocessing(videos: Path, p_networks: Path,
     # Will contain a dictionary with the filepath: list of tuples in form (csv_df, p_csv)
     processed_dirs = {}
     for p_csv in videos.glob("**/*_filtered.csv"):  # get all filtered CSVs 
-        
+
         # The directory holding all data for that particular experiment, i.e parent of nx dir
         parent_dir = p_csv.parent.parent.parent
 
