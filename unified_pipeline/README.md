@@ -16,6 +16,9 @@ pip install opencv-python==4.6.0.66
 pip install opencv-contrib-python==4.6.0.66
 ```
 
+Note: Since the unified pipeline code is not on the main branch of this repository but instead on the `unified-workflow` branch, if you are using the command line interface to clone it, make sure to specify the branch when running the clone command.
+To clone this branch specifically: `git clone -b unified-workflow <the URL to this repository>`
+
 ## Usage
 
 1. Run through the `DLC_pipeline` notebook, making sure to enter values into any user variables (these will be pointed out by comments).
