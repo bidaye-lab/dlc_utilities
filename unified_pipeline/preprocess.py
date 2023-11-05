@@ -584,6 +584,9 @@ def gen_anipose_files(parent_dir: Path, p_network_cfg: Path, p_calibration_targe
 
     traverse_dirs(structure, parent_dir, parent_dir)
 
+    # Ran succesfully
+    return True
+
 
 def run_preprocessing(videos: Path, p_networks: Path,
                       p_calibration_target=Path(
