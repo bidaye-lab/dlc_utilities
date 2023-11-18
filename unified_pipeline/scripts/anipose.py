@@ -7,9 +7,12 @@ __author__ = "Jacob Ryabinky"
 import logging
 import subprocess
 from pathlib import Path
-import utils
 
-# ! This function is the exact same as the one in preprocess.py; we can decide on how to organize these functions later
+from src.file_tools import load_config, find_nx_dirs
+
+# TODO: decide if this file should be split up into a module (I think it could be and then only keep `run` function in this file)
+
+# ! There are slight differences between this function and the one in calibration.py, TODO: import from calibration and consolidate changes (this function should be the correct one)
 def get_calibration_type(p_calibration_target: Path, p_project_dir: Path):
     """Return the calibration type of the directory based on the calibration_target file
 
@@ -25,7 +28,7 @@ def get_calibration_type(p_calibration_target: Path, p_project_dir: Path):
     String OR None
         Returns a string "board" or "fly" if the directory provided is board-based or fly-based calibration respectively. Returns None and gives a logging error to the user if the directory is not inside calibration_target or is not a child of a path in calibration_target.
     """
-    calibration_target_config = utils.load_config(p_calibration_target)
+    calibration_target_config = load_config(p_calibration_target)
 
     # all the file paths that use a board calibration
     board_paths = calibration_target_config['board']
@@ -70,7 +73,7 @@ def run(parent_dir: Path) -> None:
     """
 
     num_run = 0 # number of times anipose has been run (essentially number of dirs modified)
-    nx_dirs = utils.find_nx_dirs(parent_dir)
+    nx_dirs = find_nx_dirs(parent_dir)
     for nxdir in nx_dirs: # run on all Nx dirs
         p_anipose = nxdir / 'anipose' 
         if not p_anipose.exists():

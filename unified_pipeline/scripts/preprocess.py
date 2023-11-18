@@ -4,312 +4,23 @@ preprocess.py: various preprocessing functions used to prepare data for anipose 
 
 __author__ = "Nico Spiller, Jacob Ryabinky"
 
-from datetimerange import DateTimeRange
-from datetime import datetime
-import utils
+from src.calibration import *
+from src.clean import *
+from src.dlc import *
+from src.file_tools import *
+from src.hdf import *
+
+import pandas as pd
+import logging
 import shutil
 from pathlib import Path
-import pandas as pd
-import deeplabcut
 import glob as glob
 
-import logging
 import pickle
 pickle.HIGHEST_PROTOCOL = 4 # Important for compatibility 
 
 
 root = Path(r"\\mpfi.org\public\sb-lab\DLC_pipeline_Dummy\0_QualityCtrl")
-
-
-# DLC Generation
-def analyze_new(videos_folders_path: Path, network_sets_path: Path) -> None:
-    """Run appropriate model with DLC on each video
-
-    Parameters
-    ----------
-    videos_folders_path : Path
-        File path to genotype directory with experiment videos
-    
-    network_sets_path : Path
-        File path to the config file containing model paths
-    """
-
-    network_sets = utils.load_config(network_sets_path)
-    model_paths = network_sets['Ball'] # network_local is dev
-
-    """ network_local: 
-
-    model_paths = {
-        'A': r"C:\\Users\ryabinkyj\Documents\testanalyze\DLCModels\camA_augmented-BidayeLab-2023-01-18",
-        'B':'C:\\Users\\ryabinkyj\\Documents\\testanalyze\\DLCModels\\3cam_BEH-BidayeLab-2022-09-16',
-        'C':'C:\\DLC\\3D_8cam_vid\\camC_FS34_RN101-BidayeLab-2022-10-01',
-        'D':r"C:\\Users\ryabinkyj\Documents\testanalyze\DLCModels\camD_FS34_RN101-BidayeLab-2022-09-20",
-        'E':r"C:\\Users\ryabinkyj\Documents\testanalyze\DLCModels\3cam_BEH-BidayeLab-2022-09-16",
-        'F':'C:\\DLC\\3D_8cam_vid\\camF_FS34_RN101-BidayeLab-2022-10-01',
-        'G': None, # Top-down view ignored, no model
-        'H':r"C:\\Users\ryabinkyj\Documents\testanalyze\DLCModels\3cam_BEH-BidayeLab-2022-09-16"
-    }
-    """
-
-    # all folders to analyze (Nx / Ball / Video files)
-    logging.info(f"Searching through {videos_folders_path}")
-    video_folders = [ *videos_folders_path.glob('**/N*/Ball') ]
-    logging.info(f"Found {len(video_folders)} Ball folders")
-
-    # cycle through all video folders
-    for video_folder in video_folders:
-        print()
-
-        # all mp4 files
-        video_files = [ *video_folder.glob('*.mp4') ] 
-        logging.info(f"Found {len(video_files)} MP4 files")
-
-        # Run DLC on each video file within the current video folder
-        for video_file in video_files:
-
-            logging.info(f"Analyzing movie: {video_file.name}")
-
-            # check if camera model is defined in `model_paths``
-            cam_type = video_file.name.split('-')[0]  # string before first '-' is camera name
-            try:
-                p = model_paths[cam_type]
-                if not p: # if model is defined but path empty
-                    logging.info(f"Skipping video file: model path empty for Camera {cam_type}")
-                    continue
-            except KeyError: # if model is not defined
-                logging.warning(f"Skipping video file:  model path not defined for Camera {cam_type}")
-                continue
-
-            # path to the DLC config for that particular network
-            model_config_path = Path(model_paths[cam_type]) / 'config.yaml'
-            if not model_config_path.is_file():
-                logging.warning(f'Skipping video file: config file does not exist at {model_config_path}')
-                continue
-
-            # determine model name
-            model_config = utils.load_config(model_config_path) # read dlc cfg to get `iteration`
-            n_iteration = model_config['iteration']
-            model_folder = model_config_path.parent / f'evaluation-results/iteration-{n_iteration}/'
-            csvs = [ *model_folder.glob('*/*-results.csv')] # this should only find one CSV file
-            if len(csvs) != 1:
-                logging.warning('Could not determine model name, skipping check ')
-            else:
-                # get model name from CSV name
-                model_csv = csvs[0]
-                model_name = model_csv.name.replace('-results.csv', '')
-
-                # check if video already has been analyzed with given model
-                output = video_file.parent / f'{video_file.stem}{model_name}_filtered.csv'
-                if output.is_file():
-                    logging.info('Skipping video file: *_filtered.cvs file already exists')
-                    continue
-
-            # additional logging
-            logging.info(f"Camera: {cam_type}")
-            logging.info(f"DLC Config path: {model_config_path}")
-            logging.info(f"Model path: {model_paths[cam_type]}")
-            logging.info(f"Video file path: {video_file}")
-
-            # run DLC
-            deeplabcut.analyze_videos(model_config_path, str(video_file), save_as_csv=True)
-            deeplabcut.filterpredictions(model_config_path, str(video_file), save_as_csv=True)
-
-
-def create_file_name(path: Path, root: Path) -> Path:
-    """Create appropriate filename from a path for each data file in the format GenotypeFlynum-camName, e.g: for camA in the BPN dataset, for fly N0, filename: BPNN1-A
-
-    Parameters
-    ----------
-    path : Path
-        The path to the data file
-    root : Path
-        The path to the root directory
-
-    Returns
-    -------
-    Path 
-        Path with file name in the format GenotypeFlynum-camName
-    """
-
-    """
-    Directory structure example:
-
-    BallSystem_RawData \ <Genotype info> \ <-1+ Subdirectories> \ <N1, N2...Nx> \ <Ball, SS> \ <Video & DLC files>
-
-    Camera name - directly from DLC generated file names
-    Fly number - parent of parent of DLC file
-    Genotype - Child of root
-    """
-    path_rel = path.relative_to(root)
-
-    cam_name = str(path.name).split("-")[0]
-    fly_num = str(path.parent.parent.name).strip()
-    genotype = str(path_rel.parts[0]).strip().replace("-", "").replace("_", "")
-    file_name = genotype + fly_num + "-" + cam_name
-    return Path(file_name)
-
-
-def to_dt(date_string: str, time: bool = False) -> datetime:
-    match = "%m%d%Y"  # only date
-    if time:
-        match = "%m%d%Y%H%M%S"  # if the DT string contains a time as well
-    return datetime.strptime(date_string, match)
-
-
-def get_date_time(p_project_dir: Path) -> datetime:
-    # name format B-4182023151132-0000
-
-    mp4_files = [file for file in p_project_dir.glob('**/*.mp4') if file.name.count('-') >= 2] # Excludes the `calib-A` etc. calibration movies from the search
-    if not mp4_files:
-        raise ValueError("No valid .mp4 files found in the directory")
-    
-    mp4 = mp4_files[0] # First valid mp4 file, used to get datetime range
-    mp4_name = mp4.name
-    date_time_string = mp4_name.split('-')[1]
-
-    return to_dt(date_time_string, True)
-
-
-def get_calibration_type(p_calibration_target: Path, p_project_dir: Path):
-    calibration_target_config = utils.load_config(p_calibration_target)
-
-    # all the file paths that use a board calibration
-    board_paths = calibration_target_config['board']
-    # all the file paths that use a fly calibration
-    fly_paths = calibration_target_config['fly']
-
-    if board_paths and any(str(p_project_dir) == path or Path(path) in p_project_dir.parents for path in board_paths):
-        return "board"
-    elif fly_paths and any(str(p_project_dir) == path or Path(path) in p_project_dir.parents for path in fly_paths):
-        return "fly"
-    else:
-        return None
-
-
-def get_anipose_calibration_files(p_calibration_target: Path, p_calibration_timeline: Path, p_project_dir: Path) -> list:
-    p_calibration_files = ""
-
-    # specifies which calibration to use based on the timestamp on filename
-    calibration_timeline = utils.load_config(p_calibration_timeline)
-
-    # gets the datetime string from filename
-    project_date = get_date_time(p_project_dir)
-
-    for path, daterange in calibration_timeline.items():
-        start = daterange.split("-")[0].strip()  # Start datetime
-        end = daterange.split("-")[1].strip()  # end datetime
-        dt_start = to_dt(start)
-        dt_end = to_dt(end)
-        # Create a date range (this just starts and ends at midnight since the time doesn't matter)
-        dt_daterange = DateTimeRange(dt_start, dt_end)
-        if project_date in dt_daterange:  # determine if the project falls in the date range
-            p_calibration_files = Path(path)
-            break
-    else:
-        logging.error(
-            f"The project date (`{project_date}`) of the directory `{p_project_dir}` does not fall into any date range in calibration_timeline: `{p_calibration_timeline}`")
-        return
-
-    output_files = []
-    p_common_files = Path('./common_files')
-    if p_calibration_files and p_calibration_files.exists():  # calibration file dir found
-        calibration_type = get_calibration_type(
-            p_calibration_target, p_project_dir)
-        p_detection_pickle = next(
-            p_calibration_files.glob('**/detections.pickle'))
-        p_calibration_toml = next(
-            p_calibration_files.glob('**/calibration.toml'))
-
-
-        if calibration_type == 'board':
-            # Board calibration needs both files
-            output_files.append(p_detection_pickle)
-            output_files.append(p_calibration_toml)
-        elif calibration_type == 'fly':
-            p_calib_movies = list(p_common_files.glob("*.mp4"))
-
-            # Fly-based calibration only requires detections.pickle
-            output_files.append(p_detection_pickle)
-            # Fly-based requires calibration movies 
-            output_files += p_calib_movies # merges the two lists together
-        else:
-            logging.error(
-                f"Invalid calibration type or calibration type not specified in `{p_calibration_target}")
-            return
-    else:
-        logging.error("No matching calibration directory for video files")
-        return
-
-    return output_files
-
-
-def fix_point(df: pd.DataFrame, col_names: list, n: int = 1) -> pd.DataFrame:
-    """Replace all values in a DataFrame corresponding to DLC CSV data with one value. 
-    This is useful for a point that should stay fixed. Missing values are conserved. 
-    Original file is overwritten.
-
-    Parameters
-    ----------
-    df: DataFrame 
-        Panda DataFrame representing CSV data 
-    col_name : str, optional
-        Name of the columns
-    n : int, optional
-        Replace values with nth entry. To replace with the mean of whole column, choose 0, by default 1
-
-    Returns
-    -------
-    df : pd.DataFrame
-        Full dataframe (representing DLC CSV) with specified points fixed
-    """
-
-    # select columns of interests and here only values
-    cols = [c for c in df.loc[1, :] if c in col_names]
-
-    c = df.loc[3:,df.loc[1, :].isin(cols)].astype(float) # select columns of interests and here only values
-
-    if n > 0:
-        x = c.iloc[n-1, :] # select value index
-        logging.info(f'Replacing column values with {n}th value...')
-    else:
-        x = c.mean() # calculate mean
-        logging.info('Replacing column values with mean...')
-
-    for i in x.index:
-        c.loc[:, i] = x.loc[i]
-
-    df.loc[c.index, c.columns] = c # merge back to full dataframe
-
-    return df
-
-
-def remove_cols(df: pd.DataFrame, start: str = "") -> pd.DataFrame:
-    """Remove columns in a DEEPLABCUT CSV based on second rows (bodyparts).
-        This is useful when certain joints are badly tracked.
-
-    Parameters
-    ----------
-    df : pd.DataFrame
-        Panda DataFrame representing CSV data 
-    start : str, optional
-        Remove column if name starts with given string, by default ""
-
-    Returns
-    -------
-    DataFrame
-        Full dataframe (representing DLC CSV) with columns removed
-    """
-
-    # filter columns based on beginning of name
-    if start:
-        # find cols with the particular start string
-        cols = df.loc[:, df.loc[1, :].apply(
-            lambda x: str(x).startswith(start))].columns
-        df = df.drop(columns=cols)
-        logging.info(
-            ' removed {} columns starting with {}'.format(len(cols), start))
-
-    return df
 
 
 def clean_dfs(p_csv: Path) -> pd.DataFrame:
@@ -326,7 +37,7 @@ def clean_dfs(p_csv: Path) -> pd.DataFrame:
         Processed CSV as a DF
     """
     logging.info(f"Processing {p_csv.name}")
-    csv_df = utils.load_csv_as_df(p_csv) # Flat CSV (req'd for current method of preprocessing)
+    csv_df = load_csv_as_df(p_csv) # Flat CSV (req'd for current method of preprocessing)
 
     # Fix points
     logging.info(" Running `Fix points` preprocessing...")
@@ -363,37 +74,6 @@ def clean_dfs(p_csv: Path) -> pd.DataFrame:
     logging.info(f"File written")
 
     return write_path
-
-def df2hdf(df: pd.DataFrame, csv_path: Path, write_path: Path, root: Path = root) -> None:
-    """Convert pandas DF provided to hdf format and save with proper name format 
-
-    Parameters
-    ----------
-    df : pd.DataFrame
-        DF representing DLC data
-    csv_path : Path
-        Path to original CSV from which DF was generated
-    write_path : Path
-        Path to which HDF will be written
-    root : Path, optional
-        Root directory, by default root
-    """
-    # Create new file name
-    try:
-        # get filename from csv path in the form GenotypeFlynum-camName
-        file_name = create_file_name(csv_path, root)
-    except ValueError:
-        logging.critical("Incorrect root.\nYour root path does not match with the parent directory provided, please make sure that you provided the correct root. \
-        \nThe root should be the beginning of your parent directory path up to the folder containing raw data, e.g `\mpfi.org\public\sb-lab\BallSystem_RawData`\n")
-        return -1
-
-    hdf_name = file_name.with_suffix('.h5')
-
-    # save to disk
-    hdf_path = write_path / hdf_name
-    logging.info(f"Writing to file {hdf_path}")
-    df.to_hdf(hdf_path, key='df_with_missing', mode='w')
-
 
 def traverse_dirs(directory_structure: dict, parent_dir: Path, path: Path = Path('')) -> None:
     """Traverse the directory dict structure and generate analagous file structure
@@ -544,7 +224,7 @@ def gen_anipose_files(parent_dir: Path, p_network_cfg: Path, p_calibration_targe
         for file in ball_folder.glob('*.csv'):  # Find all .csv files
             if not genotype:
                 # get genotype for G-cam dummy file
-                genotype = utils.get_genotype(file, root)
+                genotype = get_genotype(file, root)
             # only process the filtered CSVs
             if 'filtered' in file.name:  # TODO: change to check for model name and cam as well, i.e make sure that only grabbing files which match the currently set networks
                 logging.info(f"Found filtered CSV file {file}")
@@ -561,7 +241,7 @@ def gen_anipose_files(parent_dir: Path, p_network_cfg: Path, p_calibration_targe
         }
 
     # Get network set name
-    cfg = utils.load_config(p_network_cfg)
+    cfg = load_config(p_network_cfg)
     network_set_name = cfg['Ball']['name']  # network set for ball
     logging.info(f"Using network set name {network_set_name}")
     if not structure:
