@@ -44,6 +44,20 @@ def fix_point(df: pd.DataFrame, col_names: list, n: int = 1) -> pd.DataFrame:
 
     return df
 
+def replace_likelihood(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Replace `likelihood` column values with 1.0
+    """
+    
+    df_new = df.copy() 
+
+    MAX_LIKELIHOOD = 1.0
+
+    mask = (df_new.loc[1:] == 'likelihood').any() # Only cols that contain the value 'likelihood'
+
+    df_new.loc[2:, mask] = MAX_LIKELIHOOD 
+
+    return df_new
 
 def remove_cols(df: pd.DataFrame, start: str = "") -> pd.DataFrame:
     """Remove columns in a DEEPLABCUT CSV based on second rows (bodyparts).
@@ -72,3 +86,5 @@ def remove_cols(df: pd.DataFrame, start: str = "") -> pd.DataFrame:
             ' removed {} columns starting with {}'.format(len(cols), start))
 
     return df
+
+

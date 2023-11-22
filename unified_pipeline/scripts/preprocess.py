@@ -4,11 +4,11 @@ preprocess.py: various preprocessing functions used to prepare data for anipose 
 
 __author__ = "Nico Spiller, Jacob Ryabinky"
 
-from src.calibration import *
-from src.clean import *
-from src.dlc import *
-from src.file_tools import *
-from src.hdf import *
+from src.calibration import get_calibration_type, get_anipose_calibration_files 
+from src.clean import fix_point, replace_likelihood, remove_cols
+from src.dlc import analyze_new
+from src.file_tools import load_config, load_csv_as_df, get_genotype 
+from src.hdf import df2hdf
 
 import pandas as pd
 import logging
@@ -63,6 +63,9 @@ def clean_dfs(p_csv: Path) -> pd.DataFrame:
         logging.info("camName `E`, removing cols starting with `R-`")
         start = 'R-'  # Remove col if start of name matches string
     csv_df = remove_cols(csv_df, start)
+
+    # Repalce 'likelihood' column values with 1.0
+    csv_df = replace_likelihood(csv_df)
 
     # return csv_df     # !! in the future change back, file write is a fix to support multi-indexed DF for now
 
