@@ -8,7 +8,7 @@ __author__ = "Nico Spiller"
 import pandas as pd
 from pathlib import Path
 import argparse
-from utils import find_nx_dirs
+from src.file_tools import find_nx_dirs
 
 def csv_to_xyz(csv:Path, p_xyz_dir:Path, split=1400, ball=None):
     """

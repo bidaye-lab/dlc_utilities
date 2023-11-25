@@ -5,7 +5,7 @@ Run the DLC API on raw videos to analyze videos and generate tracking points
 import logging
 from pathlib import Path
 import deeplabcut
-import file_tools
+import src.file_tools as file_tools
 
 # DLC Generation
 def analyze_new(videos_folders_path: Path, network_sets_path: Path) -> None:

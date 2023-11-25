@@ -21,8 +21,11 @@ pip install opencv-contrib-python==4.6.0.66
     Note: Since the unified pipeline code is not on the main branch of this repository but instead on the `unified-workflow` branch, if you are using the command line interface to clone it, make sure to specify the branch when running the clone command.
     To clone this branch specifically: `git clone -b unified-workflow <the URL to this repository>`
 
-4. Install local modules
-    - Once you have cloned the repo, enter the directory you cloned into and run `pip install -e .` (Make sure you have the Anaconda environment active) 
+4. Install local modules (Once repo is cloned)
+    - Activate the DLC environment
+    - Enter the directory you cloned into and run `pip install -e .`
+    - Activate the Anipose environment
+    - Enter the directory you cloned into and run `pip install -e .`
 
 
 
@@ -30,7 +33,7 @@ pip install opencv-contrib-python==4.6.0.66
 
 1. Run through the `DLC_pipeline` notebook, making sure to enter values into any user variables (these will be pointed out by comments).
     - Use the `DEEPLABCUT` environment you created.
-    - All config and other common files should be stored in `./common_files` (relative to script)
+    - All config and other common files should be stored in `./common_files` relative to `src/`
     - Configuration files include `calibration_target.yml`, `calibration_timeline.yml`, `GenotypeFly-G.h5`, `config_fly.toml` or `config_board.toml`, `dlc_networks.yml` (Names should be exact for now, since some are hardcoded in.)
     - Remember that this pipeline only works for ball data.
 2. Run through the `Anipose_pipeline` notebook, making sure to enter values into any user variables.
