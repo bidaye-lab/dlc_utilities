@@ -8,7 +8,7 @@ import deeplabcut
 import src.file_tools as file_tools
 
 # DLC Generation
-def analyze_new(videos_folders_path: Path, network_sets_path: Path) -> None:
+def analyze_new(videos_folders_path: Path, network_sets_path: Path = Path('../common_files/DLC_network_sets.yml')) -> None:
     """Run appropriate model with DLC on each video
 
     Parameters

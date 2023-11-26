@@ -1,53 +1,37 @@
 """
-anipose.py: Run Anipose commands on DLC predictions to generate Anipose predictions
+# Step 2/2 of the overall pipeline. 
+
+Uses the Anaconda environment created for DeepLabCut
+
+Note: Will skip running Anipose if it has 1. been run already for ALL commands below or 2. is missing critical files
+
+## Steps
+  1. Find all Anipose directories within given root
+  1. Determine each project calibration type (board-based or fly-based)
+  2. Run Anipose commands
+    - Fly based: `anipose filter`, `anipose calibrate`, `anipose triangulate`, `anipose angles`
+    - Board based: 'anipose filter', 'anipose triangulate', 'anipose angles'
 """
 
 __author__ = "Jacob Ryabinky"
 
 import logging
+logger = logging.getLogger()
+logging.debug("Logging works :)")
+
 import subprocess
 from pathlib import Path
 
 from src.file_tools import load_config, find_nx_dirs
-
-# TODO: decide if this file should be split up into a module (I think it could be and then only keep `run` function in this file)
-
-# ! There are slight differences between this function and the one in calibration.py, TODO: import from calibration and consolidate changes (this function should be the correct one)
-def get_calibration_type(p_calibration_target: Path, p_project_dir: Path):
-    """Return the calibration type of the directory based on the calibration_target file
-
-    Parameters
-    ----------
-    p_calibration_target : Path
-        File path to the calibration_target.yml file
-    p_project_dir : Path
-        File path to the directory to be checked for fly vs board-based
-
-    Returns
-    -------
-    String OR None
-        Returns a string "board" or "fly" if the directory provided is board-based or fly-based calibration respectively. Returns None and gives a logging error to the user if the directory is not inside calibration_target or is not a child of a path in calibration_target.
-    """
-    calibration_target_config = load_config(p_calibration_target)
-
-    # all the file paths that use a board calibration
-    board_paths = calibration_target_config['board']
-    # all the file paths that use a fly calibration
-    fly_paths = calibration_target_config['fly']
-
-    # Checks if the list of paths exists, then if the project_dir is exactly any of the paths in calibration_target, then if project_dir is a child of any paths in project_dir
-    if board_paths and any(str(p_project_dir) == path or Path(path) in p_project_dir.parents for path in board_paths):
-        return "board"
-    elif fly_paths and any(str(p_project_dir) == path or Path(path) in p_project_dir.parents for path in fly_paths):
-        return "fly"
-    else:
-        logging.error(f"Could not find {p_project_dir} in calibration target: {p_calibration_target}")
-        logging.warning("Defaulting to anipose commands WITHOUT `anipose calibrate` being run")
-        return None
+from src.calibration import get_calibration_type
 
 
 def run_anipose_commands(wdir, p_calibration_target: Path, p_project_dir: Path):
     is_fly_based = get_calibration_type(p_calibration_target, p_project_dir) == "fly"
+
+    if is_fly_based == None:
+        logging.error(f"Could not find {p_project_dir} in calibration target: {p_calibration_target}")
+        logging.warning("Defaulting to anipose commands WITHOUT `anipose calibrate` being run")
 
     commands = (['anipose filter', 'anipose calibrate', 'anipose triangulate', 'anipose angles'] if is_fly_based 
                 else ['anipose filter', 'anipose triangulate', 'anipose angles'])
@@ -103,7 +87,7 @@ def run(parent_dir: Path) -> None:
                 continue
 
 
-            p_common_files = Path(r'./common_files')
+            p_common_files = Path(r'../common_files')
             p_calibration_target = p_common_files / 'calibration_target.yml'
 
             # run anipose commands
@@ -112,3 +96,4 @@ def run(parent_dir: Path) -> None:
             num_run+=1
             logging.info(f'Finished running anipose in {p_network}')
     print(f"Finished running anipose in {num_run} projects...")
+

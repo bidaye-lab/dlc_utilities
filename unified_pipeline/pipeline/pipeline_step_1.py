@@ -1,8 +1,23 @@
 """
-preprocess.py: various preprocessing functions used to prepare data for anipose (from DLC output)
+# Step 1/2 of the overall pipeline. 
+
+Uses the Anaconda environment created for DeepLabCut
+
+## Steps
+  1. Run DLC on movies folder specified
+  2. Run DLC post-processing (Data processing functions found in src.clean)
+  3. Generate the required Anipose file structure
+    - Convert DLC post-processed CSVs to HDF
+    - Copy over HDFs, calibration files, and (if needed) calibration movies to Anipose directory with the correct sub-dirs 
 """
 
+
 __author__ = "Nico Spiller, Jacob Ryabinky"
+
+import logging
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
+logging.debug("Logging works :)")
 
 from src.calibration import get_calibration_type, get_anipose_calibration_files 
 from src.clean import fix_point, replace_likelihood, remove_cols
@@ -11,7 +26,6 @@ from src.file_tools import load_config, load_csv_as_df, get_genotype
 from src.hdf import df2hdf
 
 import pandas as pd
-import logging
 import shutil
 from pathlib import Path
 import glob as glob
@@ -20,8 +34,7 @@ import pickle
 pickle.HIGHEST_PROTOCOL = 4 # Important for compatibility 
 
 
-root = Path(r"\\mpfi.org\public\sb-lab\DLC_pipeline_Dummy\0_QualityCtrl")
-
+root = Path(r"\\mpfi.org\public\sb-lab\DLC_pipeline_Dummy\0_QualityCtrl") #TODO: unhardcode
 
 def clean_dfs(p_csv: Path) -> pd.DataFrame:
     """Run any functions that clean the raw data. Any new cleaning steps can be added here.
@@ -271,7 +284,7 @@ def gen_anipose_files(parent_dir: Path, p_network_cfg: Path, p_calibration_targe
     return True
 
 
-def run_preprocessing(videos: Path, p_networks: Path,
+def run_preprocessing(videos: Path, p_networks=Path('../common_files/DLC_network_sets.yml'),
                       p_calibration_target=Path(
                           '../common_files/calibration_target.yml'),
                       p_calibration_timeline=Path(
