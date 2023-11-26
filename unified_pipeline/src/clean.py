@@ -55,7 +55,7 @@ def replace_likelihood(df: pd.DataFrame) -> pd.DataFrame:
 
     mask = (df_new.loc[1:] == 'likelihood').any() # Only cols that contain the value 'likelihood'
 
-    df_new.loc[2:, mask] = MAX_LIKELIHOOD 
+    df_new.loc[3:, mask] = MAX_LIKELIHOOD 
 
     return df_new
 
