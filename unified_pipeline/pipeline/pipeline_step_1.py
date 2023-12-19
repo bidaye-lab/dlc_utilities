@@ -91,7 +91,7 @@ def clean_dfs(p_csv: Path) -> pd.DataFrame:
 
     return write_path
 
-def traverse_dirs(directory_structure: dict, parent_dir: Path, path: Path = Path('')) -> None:
+def traverse_dirs(directory_structure: dict, parent_dir: Path, root: Path, path: Path = Path('')) -> None:
     """Traverse the directory dict structure and generate analagous file structure
 
     All directories are dicts but files are represented with the key 'files' and a list of either file names (with extension) or the full path to an existing file.
@@ -113,7 +113,7 @@ def traverse_dirs(directory_structure: dict, parent_dir: Path, path: Path = Path
                 logging.info(f" Creating new directory {newpath}")
                 newpath.mkdir()
                 # recursively call to traverse all subdirs
-                traverse_dirs(child, parent_dir, path=newpath)
+                traverse_dirs(child, parent_dir, root, path=newpath)
             else:
                 logging.warning(
                     f"Skipping creating {newpath} because it already exists")
@@ -180,7 +180,7 @@ def traverse_dirs(directory_structure: dict, parent_dir: Path, path: Path = Path
                     filepath.touch()
 
 
-def gen_anipose_files(parent_dir: Path, p_network_cfg: Path, p_calibration_target: Path, p_calibration_timeline: Path, preprocessed_dfs: list, p_gcam_dummy: Path, structure: dict = {}) -> None:
+def gen_anipose_files(parent_dir: Path, p_network_cfg: Path, p_calibration_target: Path, p_calibration_timeline: Path, preprocessed_dfs: list, p_gcam_dummy: Path, root: Path, structure: dict = {}) -> None:
     """Generate the necessary anipose file structure given a parent path and a file structure
 
     Parameters
@@ -284,7 +284,7 @@ def gen_anipose_files(parent_dir: Path, p_network_cfg: Path, p_calibration_targe
     return True
 
 
-def run_preprocessing(videos: Path, p_networks=Path('../common_files/DLC_network_sets.yml'),
+def run_preprocessing(videos: Path, root: Path, p_networks=Path('../common_files/DLC_network_sets.yml'),
                       p_calibration_target=Path(
                           '../common_files/calibration_target.yml'),
                       p_calibration_timeline=Path(
@@ -343,7 +343,7 @@ def run_preprocessing(videos: Path, p_networks=Path('../common_files/DLC_network
 
     logging.info("Generating anipose files...")
     for parent_dir, processed_csvs in processed_dirs.items():
-        if not gen_anipose_files(parent_dir, p_networks, p_calibration_target, p_calibration_timeline, processed_csvs, p_gcam_dummy):
+        if not gen_anipose_files(parent_dir, p_networks, p_calibration_target, p_calibration_timeline, processed_csvs, p_gcam_dummy, root):
             # TODO: gen_anipose_files needs to return somethng when it finishes (maybe directory where it was generated)
             logging.warning(f"Skipped anipose generation for {parent_dir}")
     print('Finished preprocessing...')

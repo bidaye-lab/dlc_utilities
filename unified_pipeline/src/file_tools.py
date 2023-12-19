@@ -60,7 +60,7 @@ def find_nx_dirs(parent_dir: Path) -> list:
             dirs.append(parent)
     return dirs
 
-def get_genotype(path: Path, root: Path) -> Path:
+def get_genotype(path: Path, root: Path) -> str:
     # Helper function to get genotype for G-cam dummy file
     path_rel = path.relative_to(root)
 
