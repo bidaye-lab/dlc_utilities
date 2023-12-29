@@ -278,7 +278,7 @@ def gen_anipose_files(parent_dir: Path, p_network_cfg: Path, p_calibration_targe
             }
         }
 
-    traverse_dirs(structure, parent_dir, parent_dir)
+    traverse_dirs(structure, parent_dir, root, parent_dir)
 
     # Ran succesfully
     return True

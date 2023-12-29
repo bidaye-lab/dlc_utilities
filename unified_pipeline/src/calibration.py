@@ -85,7 +85,7 @@ def get_anipose_calibration_files(p_calibration_target: Path, p_calibration_time
         return
 
     output_files = []
-    p_common_files = Path('./common_files')
+    p_common_files = Path('../common_files')
     if p_calibration_files and p_calibration_files.exists():  # calibration file dir found
         calibration_type = get_calibration_type(
             p_calibration_target, p_project_dir)
