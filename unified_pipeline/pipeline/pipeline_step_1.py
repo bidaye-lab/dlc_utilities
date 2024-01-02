@@ -80,16 +80,19 @@ def clean_dfs(p_csv: Path) -> pd.DataFrame:
     # Repalce 'likelihood' column values with 1.0
     csv_df = replace_likelihood(csv_df)
 
-    # return csv_df     # !! in the future change back, file write is a fix to support multi-indexed DF for now
+    return csv_df     # without file write
 
-    write_name = f"{p_csv.stem}_preprocessed"
-    write_path = p_csv.with_name(write_name).with_suffix(".csv")
-    logging.info(f"Writing file to {write_path}")
-    logging.info(f"NOTE: in the future, this should be changed to not use a file write.")
-    csv_df.to_csv(write_path, header=None, index=False)
-    logging.info(f"File written")
 
-    return write_path
+    # With file write VVVV
+
+    # write_name = f"{p_csv.stem}_preprocessed"
+    # write_path = p_csv.with_name(write_name).with_suffix(".csv")
+    # logging.info(f"Writing file to {write_path}")
+    # logging.info(f"NOTE: in the future, this should be changed to not use a file write.")
+    # csv_df.to_csv(write_path, header=None, index=False)
+    # logging.info(f"File written")
+
+    # return write_path
 
 def traverse_dirs(directory_structure: dict, parent_dir: Path, root: Path, path: Path = Path('')) -> None:
     """Traverse the directory dict structure and generate analagous file structure
@@ -149,27 +152,27 @@ def traverse_dirs(directory_structure: dict, parent_dir: Path, root: Path, path:
                         f"Skipping {file}, all files in `filescp` should be paths")
         elif parent == 'filescv':  # convert files in child list
             #! revert to code below when temp fix of writing to csv after preprocessing is changed back to keeping as DF until the very end
-            # for df, csv_path in child:
-            #     # The DF should only be written to the Nx folder it was taken from,
-            #     # check that DF original Nx folder matches the current path
-            #     csv_nx = csv_path.parent.parent.name  # Nx folder for the original CSV
-            #     current_nx_dir = path.parent.name  # Nx dir currently being traversed
-            #     # Check that parent directory and Nx folder are the same
-            #     if parent_dir in csv_path.parents and csv_nx == current_nx_dir:
-
-            #         df2hdf(df, csv_path, path, root)
-            
-
-            for csv_path in child:
-                # Reads preprocess CSV in with multiindexed format
-                df = pd.read_csv(csv_path, index_col=0, header=[0, 1, 2])
-                df.columns.set_levels([df.columns[0][0]], level='scorer')
-
+            for df, csv_path in child:
+                # The DF should only be written to the Nx folder it was taken from,
+                # check that DF original Nx folder matches the current path
                 csv_nx = csv_path.parent.parent.name  # Nx folder for the original CSV
                 current_nx_dir = path.parent.name  # Nx dir currently being traversed
-
+                # Check that parent directory and Nx folder are the same
                 if parent_dir in csv_path.parents and csv_nx == current_nx_dir:
                     df2hdf(df, csv_path, path, root)
+            
+
+            # OLD CODE FOR QUICK FIX WITH FILE WRITE
+            # for csv_path in child:
+            #     # Reads preprocess CSV in with multiindexed format
+            #     df = pd.read_csv(csv_path, index_col=0, header=[0, 1, 2])
+            #     df.columns.set_levels([df.columns[0][0]], level='scorer')
+
+            #     csv_nx = csv_path.parent.parent.name  # Nx folder for the original CSV
+            #     current_nx_dir = path.parent.name  # Nx dir currently being traversed
+
+            #     if parent_dir in csv_path.parents and csv_nx == current_nx_dir:
+            #         df2hdf(df, csv_path, path, root)
 
         elif parent == 'filesmk' and child:  # Create the file if only the file name provided
             for file in child:
@@ -233,7 +236,6 @@ def gen_anipose_files(parent_dir: Path, p_network_cfg: Path, p_calibration_targe
     genotype = ""
     logging.info(f"Generating `project` folder structure...")
     for folder in parent_dir.glob('N*'):  # find all fly folders (N1-Nx)
-
         logging.info(f"Searching {folder.name} directory")
         csv_files = []
         ball_folder = parent_dir / folder / 'Ball'
@@ -325,8 +327,8 @@ def run_preprocessing(videos: Path, root: Path, p_networks=Path('../common_files
         # Fix points, remove columns
         csv_df = clean_dfs(p_csv)
 
-        # processed_csv = (csv_df, p_csv) #! revert later, temp fix where file is re-written as csv to later be read in as multi-indexed
-        processed_csv = csv_df #! Currently this is just a file path, i.e clean_dfs with fix currently returns the path that the CSV was written to
+        processed_csv = (csv_df, p_csv) #! revert later, temp fix where file is re-written as csv to later be read in as multi-indexed
+        # processed_csv = csv_df #! Currently this is just a file path, i.e clean_dfs with fix currently returns the path that the CSV was written to
 
         if parent_dir in processed_dirs:
             # Append to list of processed CSVs under that parent directory

@@ -5,6 +5,7 @@ Note: all make changes to *copy* of the original DF and return a copy.
 Note: all operate on the multi-indexed dataframe that has index ('scorer', 'bodyparts', 'coords')
 """
 
+import pandas as pd
 
 def replace_likelihood(df: pd.DataFrame) -> pd.DataFrame:
     """
@@ -89,8 +90,8 @@ def remove_cols(df: pd.DataFrame, start) -> pd.DataFrame:
     """
 
     # filter columns based on beginning of name
-    filter =[col for col in df_multi if col[1].startswith(start)] # Select all cols that have 'bodyparts' column start with `start`
-    new_df = df_multi.copy()
+    filter =[col for col in df if col[1].startswith(start)] # Select all cols that have 'bodyparts' column start with `start`
+    new_df = df.copy()
     new_df.drop(columns=filter, inplace=True)
 
     return new_df
