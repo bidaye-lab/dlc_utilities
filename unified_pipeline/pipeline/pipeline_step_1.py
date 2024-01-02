@@ -75,7 +75,8 @@ def clean_dfs(p_csv: Path) -> pd.DataFrame:
     if camName == 'E':
         logging.info("camName `E`, removing cols starting with `R-`")
         start = 'R-'  # Remove col if start of name matches string
-    csv_df = remove_cols(csv_df, start)
+    if start:
+        csv_df = remove_cols(csv_df, start)
 
     # Repalce 'likelihood' column values with 1.0
     csv_df = replace_likelihood(csv_df)
