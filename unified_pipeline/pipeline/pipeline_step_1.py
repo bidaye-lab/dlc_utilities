@@ -34,8 +34,6 @@ import pickle
 pickle.HIGHEST_PROTOCOL = 4 # Important for compatibility 
 
 
-root = Path(r"\\mpfi.org\public\sb-lab\DLC_pipeline_Dummy\0_QualityCtrl") #TODO: unhardcode
-
 def clean_dfs(p_csv: Path) -> pd.DataFrame:
     """Run any functions that clean the raw data. Any new cleaning steps can be added here.
 
@@ -82,18 +80,6 @@ def clean_dfs(p_csv: Path) -> pd.DataFrame:
     csv_df = replace_likelihood(csv_df)
 
     return csv_df     # without file write
-
-
-    # With file write VVVV
-
-    # write_name = f"{p_csv.stem}_preprocessed"
-    # write_path = p_csv.with_name(write_name).with_suffix(".csv")
-    # logging.info(f"Writing file to {write_path}")
-    # logging.info(f"NOTE: in the future, this should be changed to not use a file write.")
-    # csv_df.to_csv(write_path, header=None, index=False)
-    # logging.info(f"File written")
-
-    # return write_path
 
 def traverse_dirs(directory_structure: dict, parent_dir: Path, root: Path, path: Path = Path('')) -> None:
     """Traverse the directory dict structure and generate analagous file structure
@@ -152,7 +138,6 @@ def traverse_dirs(directory_structure: dict, parent_dir: Path, root: Path, path:
                     logging.warning(
                         f"Skipping {file}, all files in `filescp` should be paths")
         elif parent == 'filescv':  # convert files in child list
-            #! revert to code below when temp fix of writing to csv after preprocessing is changed back to keeping as DF until the very end
             for df, csv_path in child:
                 # The DF should only be written to the Nx folder it was taken from,
                 # check that DF original Nx folder matches the current path
@@ -161,20 +146,6 @@ def traverse_dirs(directory_structure: dict, parent_dir: Path, root: Path, path:
                 # Check that parent directory and Nx folder are the same
                 if parent_dir in csv_path.parents and csv_nx == current_nx_dir:
                     df2hdf(df, csv_path, path, root)
-            
-
-            # OLD CODE FOR QUICK FIX WITH FILE WRITE
-            # for csv_path in child:
-            #     # Reads preprocess CSV in with multiindexed format
-            #     df = pd.read_csv(csv_path, index_col=0, header=[0, 1, 2])
-            #     df.columns.set_levels([df.columns[0][0]], level='scorer')
-
-            #     csv_nx = csv_path.parent.parent.name  # Nx folder for the original CSV
-            #     current_nx_dir = path.parent.name  # Nx dir currently being traversed
-
-            #     if parent_dir in csv_path.parents and csv_nx == current_nx_dir:
-            #         df2hdf(df, csv_path, path, root)
-
         elif parent == 'filesmk' and child:  # Create the file if only the file name provided
             for file in child:
                 filepath = path / file
@@ -238,16 +209,18 @@ def gen_anipose_files(parent_dir: Path, p_network_cfg: Path, p_calibration_targe
     logging.info(f"Generating `project` folder structure...")
     for folder in parent_dir.glob('N*'):  # find all fly folders (N1-Nx)
         logging.info(f"Searching {folder.name} directory")
-        csv_files = []
+        
+
         ball_folder = parent_dir / folder / 'Ball'
-        for file in ball_folder.glob('*.csv'):  # Find all .csv files
-            if not genotype:
-                # get genotype for G-cam dummy file
-                genotype = get_genotype(file, root)
-            # only process the filtered CSVs
-            if 'filtered' in file.name:  # TODO: change to check for model name and cam as well, i.e make sure that only grabbing files which match the currently set networks
-                logging.info(f"Found filtered CSV file {file}")
-                csv_files.append(file)
+        file = next(ball_folder.glob('*.csv'))
+        if file:
+            genotype = get_genotype(file, root)
+        else:
+            logging.error(f"Could not get genotype for {folder}.")
+            logging.warning(f"Skipping this Nx directory!")
+
+      
+
         # Create the gcam dummy file name by filling in the genotype and fly number
         gcam = (p_gcam_dummy, f"{genotype}{folder.name}-G.h5")
         # Structure for the anipose `project` folder
@@ -321,15 +294,17 @@ def run_preprocessing(videos: Path, root: Path, p_networks=Path('../common_files
     for p_csv in videos.glob("**/*_filtered.csv"):  # get all filtered CSVs 
 
         # The directory holding all data for that particular experiment, i.e parent of nx dir
-        parent_dir = p_csv.parent.parent.parent
+        parent_dir: Path = p_csv.parent.parent.parent
+        if not parent_dir.exists():
+            logging.error(f"Could not find the parent directory of {p_csv}. Check that the folder structure is correct")
+            continue
 
         # TODO: also check for cam name and model name
 
         # Fix points, remove columns
         csv_df = clean_dfs(p_csv)
 
-        processed_csv = (csv_df, p_csv) #! revert later, temp fix where file is re-written as csv to later be read in as multi-indexed
-        # processed_csv = csv_df #! Currently this is just a file path, i.e clean_dfs with fix currently returns the path that the CSV was written to
+        processed_csv = (csv_df, p_csv) 
 
         if parent_dir in processed_dirs:
             # Append to list of processed CSVs under that parent directory
@@ -346,6 +321,10 @@ def run_preprocessing(videos: Path, root: Path, p_networks=Path('../common_files
 
     logging.info("Generating anipose files...")
     for parent_dir, processed_csvs in processed_dirs.items():
+        ANIPOSE_DIRECTORY: Path = parent_dir / 'anipose'
+        if ANIPOSE_DIRECTORY.exists():
+            logging.warning(f"Skipping {ANIPOSE_DIRECTORY} generation because it already exists. Please delete any old `anipose` directories to have them regenerated.")
+            continue
         if not gen_anipose_files(parent_dir, p_networks, p_calibration_target, p_calibration_timeline, processed_csvs, p_gcam_dummy, root):
             # TODO: gen_anipose_files needs to return somethng when it finishes (maybe directory where it was generated)
             logging.warning(f"Skipped anipose generation for {parent_dir}")
