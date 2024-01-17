@@ -19,10 +19,12 @@ import logging
 logger = logging.getLogger()
 logging.debug("Logging works :)")
 
+from pipeline.config import VIDEOS_PATH 
+
 import subprocess
 from pathlib import Path
 
-from src.file_tools import load_config, find_nx_dirs
+from src.file_tools import find_nx_dirs
 from src.calibration import get_calibration_type
 
 
@@ -47,7 +49,7 @@ def run_anipose_commands(wdir, p_calibration_target: Path, p_project_dir: Path):
             logging.critical(f'Command {command} failed with return code {process.returncode}')
             break
 
-def run(parent_dir: Path) -> None:
+def run(parent_dir: Path = VIDEOS_PATH) -> None:
     """Find all valid anipose projects and run anipose processing commands on that data.
 
     Parameters
