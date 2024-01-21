@@ -19,7 +19,7 @@ logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 logging.debug("Logging works :)")
 
-from pipeline.config import ROOT, VIDEOS_PATH, COMMON_FILES
+from pipeline.config import ROOT, VIDEOS_PATH, COMMON_FILES, SAVE_FINAL_CSV
 
 
 from src.calibration import get_calibration_type, get_anipose_calibration_files 
@@ -291,6 +291,11 @@ def run_preprocessing(videos: Path = VIDEOS_PATH,
 
     # find all the CSVs that DLC generated
     # Will contain a dictionary with the filepath: list of tuples in form (csv_df, p_csv)
+
+    if SAVE_FINAL_CSV:
+        logging.warning("SAVE_FINAL_CSV Is enabled. This will save final preprocessed data to a csv with a name that ends in _preprocessed.\
+                        Keep in mind this will make the pipeline significantly slower, as there will be dozens of file writes. Only enable if intended and typically for debugging purposes.")
+
     processed_dirs = {}
     for p_csv in videos.glob("**/*_filtered.csv"):  # get all filtered CSVs 
 
@@ -304,6 +309,14 @@ def run_preprocessing(videos: Path = VIDEOS_PATH,
 
         # Fix points, remove columns
         csv_df = clean_dfs(p_csv)
+
+        if SAVE_FINAL_CSV:
+            # If config varialbe set, then save the preprocessed data to a CSV for examination
+            csv_name = p_csv.stem # name of the csv without extension
+            preprocessed_name = p_csv + '_preprocessed'
+            preprocessed_csv_path = p_csv.with_name(preprocessed_name).with_suffix('.csv')
+            logging.info(f"Saving final preprocessed data to {preprocessed_csv_path}")
+            csv_df.to_csv(preprocessed_csv_path)
 
         processed_csv = (csv_df, p_csv) 
 
