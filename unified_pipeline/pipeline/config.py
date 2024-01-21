@@ -10,7 +10,8 @@ NETWORKS_PATH= Path(config["networks_path"])
 ROOT=Path(config["root"])
 COMMON_FILES=Path(config["common_files"])
 SAVE_FINAL_CSV = bool(config["save_final_csv"])
-RUN_PREPROCESSING_FUNCTIONS= bool(config["run_preprocessing_functions"])
+SKIP_PREPROCESSING_FUNCTIONS= bool(config["skip_preprocessing_functions"])
+
 
 # Decide logging level
 LOGGING_LEVEL = logging.INFO 

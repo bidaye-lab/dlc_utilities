@@ -1,7 +1,6 @@
 ---
   # Configuration file to run the DLC/Anipose pipeline
   videos_path: \\mpfi.org\public\sb-lab\DLC_pipeline_Dummy\0_QualityCtrl\Raw_vid_test_new_Code_2\40_BDN1_CsChrim_decap
-  networks_path: ../common_files/DLC_network_sets.yml
   root: \\mpfi.org\public\sb-lab\DLC_pipeline_Dummy\0_QualityCtrl # Root directory of experiment/run, typically genotype or some other overarching directory. 
   common_files: ../common_files
 
@@ -9,7 +8,7 @@
   save_final_csv: false # if true, then the pipeline will also save the final preprocessed CSV file, useful if they need to be examined
   
   # Only change defaults for development purposes
-  run_preprocessing_functions: true
+  skip_preprocessing_functions: false
   logging_level: info # debug, info, warning, error, critical
   
 

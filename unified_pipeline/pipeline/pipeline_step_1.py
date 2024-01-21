@@ -19,7 +19,7 @@ logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 logging.debug("Logging works :)")
 
-from pipeline.config import ROOT, VIDEOS_PATH, COMMON_FILES, SAVE_FINAL_CSV
+from pipeline.config import ROOT, VIDEOS_PATH, COMMON_FILES, SAVE_FINAL_CSV, SKIP_PREPROCESSING_FUNCTIONS
 
 
 from src.calibration import get_calibration_type, get_anipose_calibration_files 
@@ -51,6 +51,10 @@ def clean_dfs(p_csv: Path) -> pd.DataFrame:
     """
     logging.info(f"Processing {p_csv.name}")
     csv_df = load_csv_as_df(p_csv) # Flat CSV (req'd for current method of preprocessing)
+
+    if SKIP_PREPROCESSING_FUNCTIONS:
+        # For debugging purposes, if you do not want to rerun these functions each time (to speed up this step), you can just skip over them
+        return csv_df
 
     # Fix points
     logging.info(" Running `Fix points` preprocessing...")
@@ -294,7 +298,8 @@ def run_preprocessing(videos: Path = VIDEOS_PATH,
 
     if SAVE_FINAL_CSV:
         logging.warning("SAVE_FINAL_CSV Is enabled. This will save final preprocessed data to a csv with a name that ends in _preprocessed.\
-                        Keep in mind this will make the pipeline significantly slower, as there will be dozens of file writes. Only enable if intended and typically for debugging purposes.")
+                        Keep in mind this will make the pipeline significantly slower, as there will be dozens of file writes.\
+                        Only enable if intended and typically for debugging purposes.")
 
     processed_dirs = {}
     for p_csv in videos.glob("**/*_filtered.csv"):  # get all filtered CSVs 
