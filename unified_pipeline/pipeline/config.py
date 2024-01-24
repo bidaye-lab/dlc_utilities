@@ -2,11 +2,11 @@ from src.file_tools import load_config
 from pathlib import Path
 import logging
 
-config = load_config('pipeline/config.yml')
+
+config = load_config('../pipeline/config.yml')
 
 
 VIDEOS_PATH = Path(config["videos_path"])
-NETWORKS_PATH= Path(config["networks_path"])
 ROOT=Path(config["root"])
 COMMON_FILES=Path(config["common_files"])
 SAVE_FINAL_CSV = bool(config["save_final_csv"])

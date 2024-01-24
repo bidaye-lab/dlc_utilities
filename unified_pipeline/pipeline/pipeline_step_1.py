@@ -15,9 +15,10 @@ Uses the Anaconda environment created for DeepLabCut
 __author__ = "Nico Spiller, Jacob Ryabinky"
 
 import logging
-logger = logging.getLogger()
-logger.setLevel(logging.INFO)
-logging.debug("Logging works :)")
+import logging
+logger = logging.getLogger(__name__)
+# logger.setLevel(logger.INFO)
+# logger.debug("Logging works :)")
 
 from pipeline.config import ROOT, VIDEOS_PATH, COMMON_FILES, SAVE_FINAL_CSV, SKIP_PREPROCESSING_FUNCTIONS
 
@@ -49,7 +50,7 @@ def clean_dfs(p_csv: Path) -> pd.DataFrame:
     pd.DataFrame
         Processed CSV as a DF
     """
-    logging.info(f"Processing {p_csv.name}")
+    logger.info(f"Processing {p_csv.name}")
     csv_df = load_csv_as_df(p_csv) # Flat CSV (req'd for current method of preprocessing)
 
     if SKIP_PREPROCESSING_FUNCTIONS:
@@ -57,7 +58,7 @@ def clean_dfs(p_csv: Path) -> pd.DataFrame:
         return csv_df
 
     # Fix points
-    logging.info(" Running `Fix points` preprocessing...")
+    logger.info(" Running `Fix points` preprocessing...")
     # Columns which will have points fixed, add/remove to change which cols processed
     col_names = [
         'R-F-ThC', 'R-M-ThC', 'R-H-ThC',
@@ -69,15 +70,15 @@ def clean_dfs(p_csv: Path) -> pd.DataFrame:
     csv_df = fix_point(csv_df, col_names, n)
 
     # Remove cols
-    logging.info("Running `Remove cols` preprocessing...")
+    logger.info("Running `Remove cols` preprocessing...")
     camName = p_csv.name[0]  # Camera letter name
     start = ''
     # TODO: remove end from here and function, since unused
     if camName == 'B':
-        logging.info("camName `B`, removing cols starting with `L-`")
+        logger.info("camName `B`, removing cols starting with `L-`")
         start = 'L-'  # Remove col if start of name matches string
     if camName == 'E':
-        logging.info("camName `E`, removing cols starting with `R-`")
+        logger.info("camName `E`, removing cols starting with `R-`")
         start = 'R-'  # Remove col if start of name matches string
     if start:
         csv_df = remove_cols(csv_df, start)
@@ -106,23 +107,23 @@ def traverse_dirs(directory_structure: dict, parent_dir: Path, root: Path, path:
         if isinstance(child, dict):  # dict is a directory, create dir and then call recursively
             newpath = (path / parent)
             if not newpath.exists():
-                logging.info(f" Creating new directory {newpath}")
+                logger.info(f" Creating new directory {newpath}")
                 newpath.mkdir()
                 # recursively call to traverse all subdirs
                 traverse_dirs(child, parent_dir, root, path=newpath)
             else:
-                logging.warning(
+                logger.warning(
                     f"Skipping creating {newpath} because it already exists")
         elif parent == 'filesmv' and child:  # move files in child list
             for file in child:
                 if isinstance(file, Path):
                     filepath = path / file.name
                     if not filepath.exists():
-                        logging.info(f"Moving file {file} to {filepath}")
+                        logger.info(f"Moving file {file} to {filepath}")
                         # if file path entered, move the existing file here
                         file.rename(filepath)
                 else:
-                    logging.warning(
+                    logger.warning(
                         f"Skipping {file}, all files in `filesmv` should be paths")
         elif parent == 'filescp' and child:  # copy files in child list
             for file in child:
@@ -131,17 +132,17 @@ def traverse_dirs(directory_structure: dict, parent_dir: Path, root: Path, path:
                     new_name = file[1]
                     filepath = path / new_name
                     if not filepath.exists():
-                        logging.info(
+                        logger.info(
                             f"Copying file {original_filepath} to {filepath}")
                         shutil.copy(original_filepath, filepath)
                 # If just path, then the file name will be the same as original
                 elif isinstance(file, Path):
                     filepath = path / file.name
                     if not filepath.exists():
-                        logging.info(f"Copying file {file} to {filepath}")
+                        logger.info(f"Copying file {file} to {filepath}")
                         shutil.copy(file, filepath)
                 else:
-                    logging.warning(
+                    logger.warning(
                         f"Skipping {file}, all files in `filescp` should be paths")
         elif parent == 'filescv':  # convert files in child list
             for df, csv_path in child:
@@ -156,7 +157,7 @@ def traverse_dirs(directory_structure: dict, parent_dir: Path, root: Path, path:
             for file in child:
                 filepath = path / file
                 if not filepath.exists():
-                    logging.info(f"Creating new file at: {filepath}")
+                    logger.info(f"Creating new file at: {filepath}")
                     # if only file name entered, create at location
                     filepath.touch()
 
@@ -196,15 +197,15 @@ def gen_anipose_files(parent_dir: Path, p_network_cfg: Path, p_calibration_targe
         # anipose config file
         p_anipose_config = Path(r"../common_files/config_board.toml")
     else:
-        logging.error(
+        logger.error(
             f"Invalid calibration type or calibration type not specified in {p_calibration_target}")
         return
 
-    logging.info(f"Getting Anipose calibration files...")
+    logger.info(f"Getting Anipose calibration files...")
     calibration_files = get_anipose_calibration_files(
         p_calibration_target, p_calibration_timeline, parent_dir)
     if not calibration_files:  # calib files could not be found
-        logging.error("Calibration files not found")
+        logger.error("Calibration files not found")
         return
 
 
@@ -212,9 +213,9 @@ def gen_anipose_files(parent_dir: Path, p_network_cfg: Path, p_calibration_targe
     # Generate `project` folder structure for anipose
     project = {}
     genotype = ""
-    logging.info(f"Generating `project` folder structure...")
+    logger.info(f"Generating `project` folder structure...")
     for folder in parent_dir.glob('N*'):  # find all fly folders (N1-Nx)
-        logging.info(f"Searching {folder.name} directory")
+        logger.info(f"Searching {folder.name} directory")
         
 
         ball_folder = parent_dir / folder / 'Ball'
@@ -222,8 +223,8 @@ def gen_anipose_files(parent_dir: Path, p_network_cfg: Path, p_calibration_targe
         if file:
             genotype = get_genotype(file, root)
         else:
-            logging.error(f"Could not get genotype for {folder}.")
-            logging.warning(f"Skipping this Nx directory!")
+            logger.error(f"Could not get genotype for {folder}.")
+            logger.warning(f"Skipping this Nx directory!")
 
       
 
@@ -241,9 +242,9 @@ def gen_anipose_files(parent_dir: Path, p_network_cfg: Path, p_calibration_targe
     # Get network set name
     cfg = load_config(p_network_cfg)
     network_set_name = cfg['Ball']['name']  # network set for ball
-    logging.info(f"Using network set name {network_set_name}")
+    logger.info(f"Using network set name {network_set_name}")
     if not structure:
-        logging.info("Using default anipose file structure")
+        logger.info("Using default anipose file structure")
         # Default file structure
         structure = {
             'anipose': {
@@ -297,7 +298,7 @@ def run_preprocessing(videos: Path = VIDEOS_PATH,
     # Will contain a dictionary with the filepath: list of tuples in form (csv_df, p_csv)
 
     if SAVE_FINAL_CSV:
-        logging.warning("SAVE_FINAL_CSV Is enabled. This will save final preprocessed data to a csv with a name that ends in _preprocessed.\
+        logger.warning("SAVE_FINAL_CSV Is enabled. This will save final preprocessed data to a csv with a name that ends in _preprocessed.\
                         Keep in mind this will make the pipeline significantly slower, as there will be dozens of file writes.\
                         Only enable if intended and typically for debugging purposes.")
 
@@ -307,7 +308,7 @@ def run_preprocessing(videos: Path = VIDEOS_PATH,
         # The directory holding all data for that particular experiment, i.e parent of nx dir
         parent_dir: Path = p_csv.parent.parent.parent
         if not parent_dir.exists():
-            logging.error(f"Could not find the parent directory of {p_csv}. Check that the folder structure is correct")
+            logger.error(f"Could not find the parent directory of {p_csv}. Check that the folder structure is correct")
             continue
 
         # TODO: also check for cam name and model name
@@ -320,7 +321,7 @@ def run_preprocessing(videos: Path = VIDEOS_PATH,
             csv_name = p_csv.stem # name of the csv without extension
             preprocessed_name = p_csv + '_preprocessed'
             preprocessed_csv_path = p_csv.with_name(preprocessed_name).with_suffix('.csv')
-            logging.info(f"Saving final preprocessed data to {preprocessed_csv_path}")
+            logger.info(f"Saving final preprocessed data to {preprocessed_csv_path}")
             csv_df.to_csv(preprocessed_csv_path)
 
         processed_csv = (csv_df, p_csv) 
@@ -338,13 +339,13 @@ def run_preprocessing(videos: Path = VIDEOS_PATH,
         if not p.exists():
             raise FileNotFoundError(f"{p} does not exist.")
 
-    logging.info("Generating anipose files...")
+    logger.info("Generating anipose files...")
     for parent_dir, processed_csvs in processed_dirs.items():
         ANIPOSE_DIRECTORY: Path = parent_dir / 'anipose'
         if ANIPOSE_DIRECTORY.exists():
-            logging.warning(f"Skipping {ANIPOSE_DIRECTORY} generation because it already exists. Please delete any old `anipose` directories to have them regenerated.")
+            logger.warning(f"Skipping {ANIPOSE_DIRECTORY} generation because it already exists. Please delete any old `anipose` directories to have them regenerated.")
             continue
         if not gen_anipose_files(parent_dir, p_networks, p_calibration_target, p_calibration_timeline, processed_csvs, p_gcam_dummy, root):
             # TODO: gen_anipose_files needs to return somethng when it finishes (maybe directory where it was generated)
-            logging.warning(f"Skipped anipose generation for {parent_dir}")
+            logger.warning(f"Skipped anipose generation for {parent_dir}")
     print('Finished preprocessing...')

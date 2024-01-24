@@ -10,7 +10,8 @@ import subprocess
 from pathlib import Path
 import logging
 import argparse
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - [%(levelname)s] - %(message)s")
+logger = logging.getLogger()
+
 
 parser = argparse.ArgumentParser(prog='Unified Pipeline', description='Runs the unified DLC+Anipose pipeline in one script')
 parser.add_argument('dlc_env_name')
@@ -39,7 +40,7 @@ print(cmd)
 result=subprocess.run(cmd, capture_output=True,text=True, shell=True) 
 print(result.stdout)
 if result.stderr:
-    logging.critical("Aborting pipeline due to error in step 1.")
+    logger.critical("Aborting pipeline due to error in step 1.")
     ERROR=True
 
 if not ERROR:
@@ -52,7 +53,7 @@ if not ERROR:
     print(result.stdout)
     if result.stderr:
         ERROR=True
-        logging.critical("Aborting pipeline due to error in step 2.")
+        logger.critical("Aborting pipeline due to error in step 2.")
     
 if ERROR:
-    logging.warning("Pipeline aborted due to error.")
+    logger.warning("Pipeline aborted due to error.")

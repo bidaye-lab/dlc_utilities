@@ -17,7 +17,7 @@ __author__ = "Jacob Ryabinky"
 
 import logging
 logger = logging.getLogger()
-logging.debug("Logging works :)")
+logger.debug("Logging works :)")
 
 from pipeline.config import VIDEOS_PATH 
 
@@ -32,21 +32,21 @@ def run_anipose_commands(wdir, p_calibration_target: Path, p_project_dir: Path):
     is_fly_based = get_calibration_type(p_calibration_target, p_project_dir) == "fly"
 
     if is_fly_based == None:
-        logging.error(f"Could not find {p_project_dir} in calibration target: {p_calibration_target}")
-        logging.warning("Defaulting to anipose commands WITHOUT `anipose calibrate` being run")
+        logger.error(f"Could not find {p_project_dir} in calibration target: {p_calibration_target}")
+        logger.warning("Defaulting to anipose commands WITHOUT `anipose calibrate` being run")
 
     commands = (['anipose filter', 'anipose calibrate', 'anipose triangulate', 'anipose angles'] if is_fly_based 
                 else ['anipose filter', 'anipose triangulate', 'anipose angles'])
 
     for command in commands: # run all commands
-        logging.info(f'Running {command}')
+        logger.info(f'Running {command}')
         process = subprocess.run(command.split(), cwd=wdir, check=False, capture_output=True)
 
-        logging.info('STDERR:\n' + process.stderr.decode('UTF-8'))
-        logging.info('STDOUT:\n' + process.stdout.decode('UTF-8'))
+        logger.info('STDERR:\n' + process.stderr.decode('UTF-8'))
+        logger.info('STDOUT:\n' + process.stdout.decode('UTF-8'))
 
         if process.returncode != 0:
-            logging.critical(f'Command {command} failed with return code {process.returncode}')
+            logger.critical(f'Command {command} failed with return code {process.returncode}')
             break
 
 def run(parent_dir: Path = VIDEOS_PATH) -> None:
@@ -63,12 +63,12 @@ def run(parent_dir: Path = VIDEOS_PATH) -> None:
     for nxdir in nx_dirs: # run on all Nx dirs
         p_anipose = nxdir / 'anipose' 
         if not p_anipose.exists():
-            logging.warning(f"Anipose directory does not exist, skipping {nxdir}")
+            logger.warning(f"Anipose directory does not exist, skipping {nxdir}")
             continue
-        logging.info(f"Found anipose directory {p_anipose}")
+        logger.info(f"Found anipose directory {p_anipose}")
         for p_n1 in p_anipose.glob('**/N1'):
             p_network = p_n1.parent.parent # anipose\Ball\<name of network set>\project\N1
-            logging.info(f"Name of network set (directory): `{p_network.name}`")
+            logger.info(f"Name of network set (directory): `{p_network.name}`")
 
             # check if anipose has been run
             p_pose_3d = p_n1 / 'pose-3d'
@@ -76,7 +76,7 @@ def run(parent_dir: Path = VIDEOS_PATH) -> None:
             p_angles = p_n1 / 'angles'
 
             if p_pose_3d.exists() and p_pose_2d_filtered.exists() and p_angles.exists():
-                logging.info(f'All anipose generated files present, skipping {p_network}')
+                logger.info(f'All anipose generated files present, skipping {p_network}')
                 continue
 
             # check if anipose directory is valid
@@ -85,7 +85,7 @@ def run(parent_dir: Path = VIDEOS_PATH) -> None:
             p_cal= p_network / 'calibration'
             p_cfg = p_network / 'config.toml'
             if not (p_proj.exists() and p_cal.exists() and p_cfg.exists()):
-                logging.info(f'Skipping {p_network}, invalid anipose file structure')
+                logger.info(f'Skipping {p_network}, invalid anipose file structure')
                 continue
 
 
@@ -93,9 +93,9 @@ def run(parent_dir: Path = VIDEOS_PATH) -> None:
             p_calibration_target = p_common_files / 'calibration_target.yml'
 
             # run anipose commands
-            logging.info(f'Changing directory to {p_network}')
+            logger.info(f'Changing directory to {p_network}')
             run_anipose_commands(p_network, p_calibration_target, parent_dir)
             num_run+=1
-            logging.info(f'Finished running anipose in {p_network}')
+            logger.info(f'Finished running anipose in {p_network}')
     print(f"Finished running anipose in {num_run} projects...")
 
