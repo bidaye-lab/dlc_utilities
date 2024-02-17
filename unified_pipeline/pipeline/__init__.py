@@ -1,5 +1,5 @@
 import logging
 import sys
-from pipeline.config import LOGGING_LEVEL
 
+LOGGING_LEVEL=logging.INFO # change to use settings later
 logging.basicConfig(stream=sys.stdout, level=LOGGING_LEVEL)

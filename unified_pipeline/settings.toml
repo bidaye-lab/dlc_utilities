@@ -1,0 +1,12 @@
+# Configuration file to run the DLC/Anipose pipeline
+videos_path = "C:\\Users\\ryabinkyj\\Documents\\testanalyze\\RawData\\BIN-1"
+root = "C:\\Users\\ryabinkyj\\Documents\\testanalyze"
+common_files = "../common_files"
+
+# Pipeline settings
+save_final_csv = false # if true, then the pipeline will also save the final preprocessed CSV file, useful if they need to be examined
+
+# Only change defaults for development purposes
+skip_preprocessing_functions = false
+logging_level = "info" # debug, info, warning, error, critical
+

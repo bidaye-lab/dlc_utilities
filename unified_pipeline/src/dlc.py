@@ -7,7 +7,11 @@ from pathlib import Path
 import deeplabcut
 import src.file_tools as file_tools
 
-from pipeline.config import VIDEOS_PATH
+# from pipeline.config import VIDEOS_PATH
+from src.file_tools import load_config
+
+from config import settings
+VIDEOS_PATH = Path(settings.videos_path)
 
 # DLC Generation
 def analyze_new(videos_folders_path: Path = VIDEOS_PATH, network_sets_path: Path = Path('../common_files/DLC_network_sets.yml')) -> None:

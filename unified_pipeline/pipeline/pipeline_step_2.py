@@ -19,10 +19,12 @@ import logging
 logger = logging.getLogger()
 logger.debug("Logging works :)")
 
-from pipeline.config import VIDEOS_PATH 
-
 import subprocess
 from pathlib import Path
+
+# from pipeline.config import VIDEOS_PATH 
+from config import settings
+VIDEOS_PATH = Path(settings.videos_path)
 
 from src.file_tools import find_nx_dirs
 from src.calibration import get_calibration_type

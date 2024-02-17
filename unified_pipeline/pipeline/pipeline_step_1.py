@@ -20,7 +20,19 @@ logger = logging.getLogger(__name__)
 # logger.setLevel(logger.INFO)
 # logger.debug("Logging works :)")
 
-from pipeline.config import ROOT, VIDEOS_PATH, COMMON_FILES, SAVE_FINAL_CSV, SKIP_PREPROCESSING_FUNCTIONS
+import pandas as pd
+import shutil
+from pathlib import Path
+import glob as glob
+
+# from pipeline.config import ROOT, VIDEOS_PATH, COMMON_FILES, SAVE_FINAL_CSV, SKIP_PREPROCESSING_FUNCTIONS
+from config import settings
+# TODO: these variables no longer needed the program should just directly use settings.setting_name etc.; same goes for other files that use settings
+ROOT = Path(settings.root)
+VIDEOS_PATH = Path(settings.videos_path)
+COMMON_FILES = Path(settings.common_files)
+SAVE_FINAL_CSV: bool = settings.save_final_csv
+SKIP_PREPROCESSING_FUNCTIONSL: bool = settings.skip_preprocessing_functions
 
 
 from src.calibration import get_calibration_type, get_anipose_calibration_files 
@@ -28,11 +40,6 @@ from src.clean import fix_point, replace_likelihood, remove_cols
 from src.dlc import analyze_new
 from src.file_tools import load_config, load_csv_as_df, get_genotype 
 from src.hdf import df2hdf
-
-import pandas as pd
-import shutil
-from pathlib import Path
-import glob as glob
 
 import pickle
 pickle.HIGHEST_PROTOCOL = 4 # Important for compatibility 
