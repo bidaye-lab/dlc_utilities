@@ -1,9 +1,15 @@
 board:
-  - \\mpfi.org\public\sb-lab\BallSystem_RawData\29_P9_DiffOpsins\P9-1540XChrimine
-  - \\mpfi.org\public\sb-lab\BallSystem_RawData\29_P9_DiffOpsins\P9-1540XChrimsonR
-  - \\mpfi.org\public\sb-lab\BallSystem_RawData\29_P9_DiffOpsins\20xCsChrim-P9-1540
-  - \\mpfi.org\public\sb-lab\BallSystem_RawData\29_P9_DiffOpsins\5xCsChrimson-P9-1540
-  - C:\Users\ryabinkyj\Documents\testanalyze\RawData\BIN-1
+ - Z:\BallSystem_RawData\43_P9Project_Stochastic_Data\1_oDN1_Hs4to6\round2\unilateral_hits
+ - Z:\BallSystem_RawData\29_P9_DiffOpsins\P9-1540XChrimsonR
+ - Z:\BallSystem_RawData\43_P9Project_Stochastic_Data\3_DNa02_HS_6to8\PC1\_positives
+ - Z:\BallSystem_RawData\43_P9Project_Stochastic_Data\3_DNa02_HS_6to8\PC1\_control_opticlobe
+ - Z:\BallSystem_RawData\47_P9Project_BilateralActn\3_DNb02_line2
+ - Z:\Neha Sapkal_new\Ball_system_data\Cschrimson_empty
+ - Z:\Neha Sapkal_new\Ball_system_data\bpn_project_pc1\BDN2_till04112025\Decap_flight all04102025\Cschrimson_decap_BDN2
+ - Z:\NehaSapkal_new\Ball_system_data\bpn_project_pc1\BDN2_till04112025\Cschrimson_decap_BDN2_amp_04152025
+ - Z:\NehaSapkal_new\Ball_system_data\bpn_project_pc1\BDN2_till04112025\Cschrimson_decap_BDN2_SS_04112025
+ - Z:\\NehaSapkal_new\\Ball_system_data\\bpn_project_pc1\\BDN2_till04112025\\Cschrimson_decap_BDN2_amp_04152025
+ 
 
 fly:
   - \\mpfi.org\public\sb-lab\BallSystem_RawData\29_P9_DiffOpsins\P9-S2X20xCSChrimson
