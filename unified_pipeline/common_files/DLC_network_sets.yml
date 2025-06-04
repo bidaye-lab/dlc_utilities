@@ -18,3 +18,13 @@ Ball:
   F : \\mpfi.org\public\sb-lab\DLC_3DAnnotations\DLC_networks\2nd_IT\camF_augmented-BidayeLab-2022-11-29
   G : 
   H : \\mpfi.org\public\sb-lab\DLC_3DAnnotations\DLC_networks\1st_IT\3cam_BEH-BidayeLab-2022-09-16
+SS:
+  name: set1
+  A : \\mpfi.org\public\sb-lab\DLC_SlipperySurfaceAnnotations\2ndIT\Networks\SS_CamA-BidayeLab-2023-05-22
+  B : \\mpfi.org\public\sb-lab\DLC_SlipperySurfaceAnnotations\2ndIT\Networks\SS_CamB-BidayeLab-2023-05-22
+  C : \\mpfi.org\public\sb-lab\DLC_SlipperySurfaceAnnotations\2ndIT\Networks\SS_CamC-BidayeLab-2023-05-22
+  D : \\mpfi.org\public\sb-lab\DLC_SlipperySurfaceAnnotations\2ndIT\Networks\SS_CamD-BiayeLab-2023-05-23
+  E : \\mpfi.org\public\sb-lab\DLC_SlipperySurfaceAnnotations\2ndIT\Networks\SS_camE-BidayeLab-2023-05-23
+  F : \\mpfi.org\public\sb-lab\DLC_SlipperySurfaceAnnotations\2ndIT\Networks\SS_CamF-BidayeLab-2023-05-23
+  G :
+  H : \\mpfi.org\public\sb-lab\DLC_SlipperySurfaceAnnotations\2ndIT\Networks\SS_CamH-BidayeLab-2023-05-23
