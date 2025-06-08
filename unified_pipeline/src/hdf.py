@@ -6,6 +6,7 @@ import logging
 from pathlib import Path
 import pandas as pd
 
+
 def create_file_name(path: Path, root: Path) -> Path:
     """Create appropriate filename from a path for each data file in the format GenotypeFlynum-camName, e.g: for camA in the BPN dataset, for fly N0, filename: BPNN1-A
 
@@ -18,7 +19,7 @@ def create_file_name(path: Path, root: Path) -> Path:
 
     Returns
     -------
-    Path 
+    Path
         Path with file name in the format GenotypeFlynum-camName
     """
 
@@ -34,13 +35,18 @@ def create_file_name(path: Path, root: Path) -> Path:
     path_rel = path.relative_to(root)
 
     cam_name = str(path.name).split("-")[0]
-    fly_num = str(path.parent.parent.name).strip()
-    genotype = str(path_rel.parts[0]).strip().replace("-", "").replace("_", "")
-    file_name = genotype + fly_num + "-" + cam_name
+    # fly_num = str(path.parent.parent.name).strip()
+
+    # genotype = str(path_rel.parts[0]).strip().replace("-", "").replace("_", "")
+
+    genotype = root.parts[-1] + "_" + path_rel.parts[0]
+
+    file_name = genotype + "-" + cam_name
     return Path(file_name)
 
+
 def df2hdf(df: pd.DataFrame, csv_path: Path, write_path: Path, root: Path) -> None:
-    """Convert pandas DF provided to hdf format and save with proper name format 
+    """Convert pandas DF provided to hdf format and save with proper name format
 
     Parameters
     ----------
@@ -50,7 +56,7 @@ def df2hdf(df: pd.DataFrame, csv_path: Path, write_path: Path, root: Path) -> No
         Path to original CSV from which DF was generated
     write_path : Path
         Path to which HDF will be written
-    root : Path 
+    root : Path
         Root directory
     """
     # Create new file name
@@ -58,14 +64,15 @@ def df2hdf(df: pd.DataFrame, csv_path: Path, write_path: Path, root: Path) -> No
         # get filename from csv path in the form GenotypeFlynum-camName
         file_name = create_file_name(csv_path, root)
     except ValueError:
-        logging.critical("Incorrect root.\nYour root path does not match with the parent directory provided, please make sure that you provided the correct root. \
-        \nThe root should be the beginning of your parent directory path up to the folder containing raw data, e.g `\mpfi.org\public\sb-lab\BallSystem_RawData`\n")
+        logging.critical(
+            "Incorrect root.\nYour root path does not match with the parent directory provided, please make sure that you provided the correct root. \
+        \nThe root should be the beginning of your parent directory path up to the folder containing raw data, e.g `\mpfi.org\public\sb-lab\BallSystem_RawData`\n"
+        )
         return -1
 
-    hdf_name = file_name.with_suffix('.h5')
+    hdf_name = file_name.with_suffix(".h5")
 
     # save to disk
     hdf_path = write_path / hdf_name
     logging.info(f"Writing to file {hdf_path}")
-    df.to_hdf(hdf_path, key='df_with_missing', mode='w')
-
+    df.to_hdf(hdf_path, key="df_with_missing", mode="w")
