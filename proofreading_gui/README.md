@@ -11,7 +11,7 @@ A simple GUI built using Python's tkinter package which allows drag-and-drop mov
     - Since this will not be on the main branch please specify the branch name
     - `git clone -b proofreading-gui <repository-url>` 
 
-3. Create a vertual or conda environment
+3. Create a virtual or conda environment
     - Recommended: `python -m venv .venv`
     - Activate the environment with `.venv/scripts/activate`
 
@@ -22,7 +22,7 @@ A simple GUI built using Python's tkinter package which allows drag-and-drop mov
 1. To use the GUI simply type `python main.py`
 
 2. There are two locations with output data
-    - For corrected CSVs and h5 files check the folder with corrected-pose-2d. The path of this folder depends on your input. Ex. If the script is run on N3 and trial3 than the path will be like input-folder\anipose\project\N3\trial3\corrected-pose-2d.
+    - For corrected CSVs and h5 files check the folder with corrected-pose-2d. The path of this folder depends on your input. Ex. If the script is run on N3 and trial3 then the path will be like input-folder\anipose\project\N3\trial3\corrected-pose-2d.
     - For log/debug data check the input-folder\proofreader-output_{genotype}N{number}\{trial_if_any}. The trial subfolder only exists when there are multiple trials.
 
 
