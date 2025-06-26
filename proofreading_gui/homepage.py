@@ -1416,6 +1416,15 @@ Drag points to correct pose"""
             try:
                 self.pose_cache[cam] = pd.read_hdf(h5_path)
                 self.last_csv_path[cam] = h5_path
+                
+                # Set all ThC points to likelihood = 1
+                pose_df = self.pose_cache[cam]
+                for scorer in pose_df.columns.levels[0]:  # Iterate through all scorers
+                    for bodypart in pose_df.columns.levels[1]:  # Iterate through all bodyparts
+                        if 'ThC' in bodypart and (scorer, bodypart, 'likelihood') in pose_df.columns:
+                            pose_df[(scorer, bodypart, 'likelihood')] = 1.0
+                            logger.info(f"Set {scorer}-{bodypart} likelihood to 1.0 for camera {cam}")
+                
             except Exception as e:
                 logger.error(f"Failed to load pose H5 {h5_path}: {e}")
                 self.pose_cache[cam] = None
