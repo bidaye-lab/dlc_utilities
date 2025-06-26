@@ -208,7 +208,8 @@ class ErrorDetection:
         merged_df['length_error'] = merged_df['Z-score'].abs() / 10
         merged_df['Error'] = merged_df['angle_error'] + merged_df['length_error']
         final_df = merged_df[['Part', 'Frame', 'N', 'Error', 'angle_error', 'length_error']].copy()
-        final_df = final_df.rename(columns={'Part': 'Outlier_Name'})
+        final_df['Outlier_Name'] = final_df['Part']
+        final_df = final_df.drop(columns=['Part'])
         return final_df
 
     @staticmethod

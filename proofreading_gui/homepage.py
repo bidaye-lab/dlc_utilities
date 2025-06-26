@@ -1162,8 +1162,8 @@ class ProofreadingInterface:
         
         # Playback speed slider
         tk.Label(control_sliders_frame, text="Playback speed:").pack(anchor='w')
-        self.playback_speed = tk.IntVar(value=25)
-        self.speed_slider = tk.Scale(control_sliders_frame, from_=1, to=50, orient='horizontal', 
+        self.playback_speed = tk.IntVar(value=40)  # Increased from 25 to 40 for faster default
+        self.speed_slider = tk.Scale(control_sliders_frame, from_=1, to=100, orient='horizontal', 
                                    variable=self.playback_speed, showvalue=True, length=120)
         self.speed_slider.pack(anchor='w', padx=5)
         
@@ -1253,6 +1253,7 @@ Drag points to correct pose"""
         self.scatter = None
         self.scatter_labels = []
         self.hover_annotation = None
+        self._in_playback_mode = False  # Track if we're in playback mode
         
         # Mouse event handlers
         self.canvas.mpl_connect('motion_notify_event', self.on_mouse_motion)
@@ -1309,6 +1310,7 @@ Drag points to correct pose"""
             self._playing_error = False
             self._paused_error = False
             self._playback_state = None
+            self._in_playback_mode = False  # Disable fast playback mode
             self.play_error_btn.config(state='normal')
             self.pause_error_btn.config(state='disabled', text='Pause')
         
@@ -1354,6 +1356,7 @@ Drag points to correct pose"""
             self._playing_error = False
             self._paused_error = False
             self._playback_state = None
+            self._in_playback_mode = False  # Disable fast playback mode
             self.play_error_btn.config(state='normal')
             self.pause_error_btn.config(state='disabled', text='Pause')
         
@@ -1367,10 +1370,12 @@ Drag points to correct pose"""
         if cam_letters and cam_letters[0] in self.available_cameras:
             self.camera_var.set(cam_letters[0])
         
-        # Calculate absolute frame number: start_frame + (N-1)*1400
+        # Calculate absolute frame number using user-configurable parameters
         trial_num = int(row['N'])
         relative_start_frame = int(row['Start_Frame'])
-        absolute_frame = relative_start_frame + (trial_num - 1) * 1400
+        frame_length = int(self.frame_length.get())
+        setup_time = int(self.setup_time.get())
+        absolute_frame = relative_start_frame + (trial_num - 1) * frame_length + setup_time
         self.frame_var.set(str(absolute_frame))
         self.update_display()
 
@@ -1421,8 +1426,13 @@ Drag points to correct pose"""
                     self.last_frame_idx = None
                     
                 cap = self.current_video_cap
-                # Only seek if not sequential to improve performance
-                if self.last_frame_idx is None or abs(frame - self.last_frame_idx) != 1:
+                # Use different seeking strategies for playback vs manual navigation
+                if self._in_playback_mode:
+                    # Fast sequential seeking for playback (always forward)
+                    if self.last_frame_idx is None or abs(frame - self.last_frame_idx) != 1:
+                        cap.set(cv2.CAP_PROP_POS_FRAMES, frame)
+                else:
+                    # Reliable seeking for manual navigation (handles reverse)
                     cap.set(cv2.CAP_PROP_POS_FRAMES, frame)
                 ret, img = cap.read()
                 self.last_frame_idx = frame
@@ -1451,71 +1461,79 @@ Drag points to correct pose"""
         # Display pose data
         self._display_pose_data(cam, frame)
         
-        # Update info panels
-        self._update_info_panels(cam, frame)
+        # Update info panels (only if they've changed)
+        if not hasattr(self, '_last_info_update') or self._last_info_update != (cam, frame):
+            self._update_info_panels(cam, frame)
+            self._last_info_update = (cam, frame)
         
         self.canvas.draw()
 
     def _display_pose_data(self, cam, frame):
         """Display pose estimation points from corrected-pose2d .h5 files"""
-        folder = self.folder_path.get()
-        fly_num = self.fly_number.get()
-        type_folder = self.type_folder.get()
-        trial_folder = self.trial_folder.get()
+        # Cache directory lookups
+        if not hasattr(self, '_pose_dir_cache'):
+            self._pose_dir_cache = {}
         
-        # Find correct anipose directory
-        anipose_root = os.path.join(folder, 'anipose')
-        n_folder_name = f'N{fly_num}'
-        anipose_dir = None
+        cache_key = (cam, self.folder_path.get(), self.fly_number.get(), 
+                    self.type_folder.get(), self.trial_folder.get())
         
-        # Find the N{number} folder based on type folder selection
-        if type_folder and type_folder != "No Type":
-            # Look in type_folder/project/N{fly_num}
-            type_path = os.path.join(anipose_root, type_folder)
-            if os.path.isdir(type_path):
-                for project_dir in os.listdir(type_path):
-                    project_path = os.path.join(type_path, project_dir)
-                    if os.path.isdir(project_path):
-                        n_folder_path = os.path.join(project_path, n_folder_name)
-                        if os.path.isdir(n_folder_path):
-                            # Include trial folder in path if specified
-                            if trial_folder and trial_folder != "No Trial":
-                                anipose_dir = os.path.join(n_folder_path, trial_folder)
-                            else:
-                                anipose_dir = n_folder_path
-                            break
-        else:
-            # Look directly in anipose/N{fly_num}
-            n_folder_path = os.path.join(anipose_root, n_folder_name)
-            if os.path.isdir(n_folder_path):
-                # Include trial folder in path if specified
-                if trial_folder and trial_folder != "No Trial":
-                    anipose_dir = os.path.join(n_folder_path, trial_folder)
-                else:
-                    anipose_dir = n_folder_path
-                    
-        if anipose_dir is None:
-            logger.error(f"Could not find anipose directory for N{fly_num}")
-            return
+        if cache_key not in self._pose_dir_cache:
+            folder = self.folder_path.get()
+            fly_num = self.fly_number.get()
+            type_folder = self.type_folder.get()
+            trial_folder = self.trial_folder.get()
+            
+            # Find correct anipose directory
+            anipose_root = os.path.join(folder, 'anipose')
+            n_folder_name = f'N{fly_num}'
+            anipose_dir = None
+            
+            # Find the N{number} folder based on type folder selection
+            if type_folder and type_folder != "No Type":
+                # Look in type_folder/project/N{fly_num}
+                type_path = os.path.join(anipose_root, type_folder)
+                if os.path.isdir(type_path):
+                    for project_dir in os.listdir(type_path):
+                        project_path = os.path.join(type_path, project_dir)
+                        if os.path.isdir(project_path):
+                            n_folder_path = os.path.join(project_path, n_folder_name)
+                            if os.path.isdir(n_folder_path):
+                                # Include trial folder in path if specified
+                                if trial_folder and trial_folder != "No Trial":
+                                    anipose_dir = os.path.join(n_folder_path, trial_folder)
+                                else:
+                                    anipose_dir = n_folder_path
+                                break
+            else:
+                # Look directly in anipose/N{fly_num}
+                n_folder_path = os.path.join(anipose_root, n_folder_name)
+                if os.path.isdir(n_folder_path):
+                    # Include trial folder in path if specified
+                    if trial_folder and trial_folder != "No Trial":
+                        anipose_dir = os.path.join(n_folder_path, trial_folder)
+                    else:
+                        anipose_dir = n_folder_path
+                        
+            if anipose_dir is None:
+                logger.error(f"Could not find anipose directory for N{fly_num}")
+                self._pose_dir_cache[cache_key] = None
+            else:
+                # Load pose data from corrected directory
+                corrected_dir = os.path.join(anipose_dir, 'corrected-pose-2d')
+                h5_path = None
+                
+                if os.path.isdir(corrected_dir):
+                    for f in os.listdir(corrected_dir):
+                        if f.lower().endswith('.h5'):
+                            # Match camera to H5 file: Genotype-{camera letter}.h5
+                            if f.upper().endswith(f'-{cam}.h5'.upper()):
+                                h5_path = os.path.join(corrected_dir, f)
+                                break
+                
+                self._pose_dir_cache[cache_key] = h5_path
         
-        # Load pose data from corrected directory
-        corrected_dir = os.path.join(anipose_dir, 'corrected-pose-2d')
-        h5_path = None
-        available_h5s = []
-        
-        if os.path.isdir(corrected_dir):
-            for f in os.listdir(corrected_dir):
-                if f.lower().endswith('.h5'):
-                    available_h5s.append(f)
-                    # Match camera to H5 file: Genotype-{camera letter}.h5
-                    if f.upper().endswith(f'-{cam}.h5'.upper()):
-                        h5_path = os.path.join(corrected_dir, f)
-                        break
-        else:
-            logger.error(f"corrected-pose-2d directory not found at: {corrected_dir}")
-        
-        if not h5_path:
-            logger.warning(f"No pose H5 found for camera {cam} in {corrected_dir}. Available: {available_h5s}")
+        h5_path = self._pose_dir_cache[cache_key]
+        if h5_path is None:
             return
         
         # Load pose data with caching
@@ -1541,40 +1559,48 @@ Drag points to correct pose"""
         if pose_df is None or frame >= len(pose_df):
             return
         
-        # Define limb groupings and colors
-        limb_defs = {
-            'R-F-': ['ThC', 'CTr', 'FTi', 'TiTa', 'TaG'],
-            'R-M-': ['ThC', 'CTr', 'FTi', 'TiTa', 'TaG'],
-            'R-H-': ['ThC', 'CTr', 'FTi', 'TiTa', 'TaG'],
-            'L-F-': ['ThC', 'CTr', 'FTi', 'TiTa', 'TaG'],
-            'L-M-': ['ThC', 'CTr', 'FTi', 'TiTa', 'TaG'],
-            'L-H-': ['ThC', 'CTr', 'FTi', 'TiTa', 'TaG'],
-            'Wings': ['L-WH', 'R-WH'],
-            'Antennae': ['L-antenna', 'R-antenna'],
-            'Notum': ['Notum'],
-        }
+        # Adjust frame index for pose data to account for setup_time offset
+        setup_time = int(self.setup_time.get())
+        pose_frame = max(0, frame - setup_time)
         
-        limb_colors = {
-            'R-F-': 'yellow', 'R-M-': 'green', 'R-H-': 'purple',
-            'L-F-': 'cyan', 'L-M-': 'pink', 'L-H-': 'orange',
-            'Wings': 'gray', 'Antennae': 'brown', 'Notum': 'black'
-        }
+        if pose_frame >= len(pose_df):
+            return
         
-        # Create gradient colors for limbs if enabled
-        def make_gradient(base_color, n=5):
-            base = np.array(to_rgb(base_color))
-            dark = base * 0.4
-            light = base + (1.0 - base) * 0.7
-            colors = [to_hex(tuple((dark + (light - dark) * (i/(n-1))).tolist())) for i in range(n)]
-            return colors
+        # Cache limb definitions and colors
+        if not hasattr(self, '_limb_defs'):
+            self._limb_defs = {
+                'R-F-': ['ThC', 'CTr', 'FTi', 'TiTa', 'TaG'],
+                'R-M-': ['ThC', 'CTr', 'FTi', 'TiTa', 'TaG'],
+                'R-H-': ['ThC', 'CTr', 'FTi', 'TiTa', 'TaG'],
+                'L-F-': ['ThC', 'CTr', 'FTi', 'TiTa', 'TaG'],
+                'L-M-': ['ThC', 'CTr', 'FTi', 'TiTa', 'TaG'],
+                'L-H-': ['ThC', 'CTr', 'FTi', 'TiTa', 'TaG'],
+                'Wings': ['L-WH', 'R-WH'],
+                'Antennae': ['L-antenna', 'R-antenna'],
+                'Notum': ['Notum'],
+            }
+            
+            self._limb_colors = {
+                'R-F-': 'yellow', 'R-M-': 'green', 'R-H-': 'purple',
+                'L-F-': 'cyan', 'L-M-': 'pink', 'L-H-': 'orange',
+                'Wings': 'gray', 'Antennae': 'brown', 'Notum': 'black'
+            }
+            
+            # Cache gradient colors
+            def make_gradient(base_color, n=5):
+                base = np.array(to_rgb(base_color))
+                dark = base * 0.4
+                light = base + (1.0 - base) * 0.7
+                colors = [to_hex(tuple((dark + (light - dark) * (i/(n-1))).tolist())) for i in range(n)]
+                return colors
+            
+            leg_base_colors = {
+                'R-F-': 'yellow', 'R-M-': 'green', 'R-H-': 'purple',
+                'L-F-': 'cyan', 'L-M-': 'pink', 'L-H-': 'orange',
+            }
+            self._leg_gradients = {k: make_gradient(v) for k, v in leg_base_colors.items()}
         
-        leg_base_colors = {
-            'R-F-': 'yellow', 'R-M-': 'green', 'R-H-': 'purple',
-            'L-F-': 'cyan', 'L-M-': 'pink', 'L-H-': 'orange',
-        }
-        leg_gradients = {k: make_gradient(v) for k, v in leg_base_colors.items()}
-        
-        row = pose_df.iloc[frame]
+        row = pose_df.iloc[pose_frame]
         points = []
         labels = []
         colors = []
@@ -1624,22 +1650,22 @@ Drag points to correct pose"""
             
             # Determine limb prefix for coloring
             limb_prefix = None
-            for prefix in limb_defs:
+            for prefix in self._limb_defs:
                 if label.startswith(prefix):
                     limb_prefix = prefix
                     break
             
             # Apply gradient coloring if enabled
-            if self.limb_gradient_var.get() and limb_prefix in leg_gradients and limb_prefix in limb_defs:
-                part_list = limb_defs[limb_prefix]
+            if self.limb_gradient_var.get() and limb_prefix in self._leg_gradients and limb_prefix in self._limb_defs:
+                part_list = self._limb_defs[limb_prefix]
                 segment = label[len(limb_prefix):] if label.startswith(limb_prefix) else label
                 if segment in part_list:
                     part_idx = part_list.index(segment)
-                    color = leg_gradients[limb_prefix][part_idx]
+                    color = self._leg_gradients[limb_prefix][part_idx]
                 else:
-                    color = limb_colors.get(limb_prefix or label, 'red')
+                    color = self._limb_colors.get(limb_prefix or label, 'red')
             else:
-                color = limb_colors.get(limb_prefix or label, 'red')
+                color = self._limb_colors.get(limb_prefix or label, 'red')
             
             # Size points based on relevance to current error
             scale = self.point_radius_scale.get() if hasattr(self, 'point_radius_scale') else 1.0
@@ -1813,15 +1839,22 @@ Drag points to correct pose"""
             if not h5_path or pose_df is None:
                 return
             
+            # Adjust frame index for pose data to account for setup_time offset
+            setup_time = int(self.setup_time.get())
+            pose_frame = max(0, frame - setup_time)
+            
+            if pose_frame >= len(pose_df):
+                return
+            
             # Update coordinates in the H5 dataframe
             scorer = pose_df.columns.levels[0][0]  # Get first scorer
             if (scorer, label, 'x') in pose_df.columns:
-                pose_df.at[frame, (scorer, label, 'x')] = x
+                pose_df.at[pose_frame, (scorer, label, 'x')] = x
             if (scorer, label, 'y') in pose_df.columns:
-                pose_df.at[frame, (scorer, label, 'y')] = y
+                pose_df.at[pose_frame, (scorer, label, 'y')] = y
             
             self._pending_pose_edits.add(cam)
-            logger.info(f"Updated {label} position at frame {frame} for camera {cam}")
+            logger.info(f"Updated {label} position at frame {frame} (pose frame {pose_frame}) for camera {cam}")
             self.status.set(f"Updated {label} position at frame {frame} (not yet saved)")
             
         except Exception as e:
@@ -1943,13 +1976,15 @@ Drag points to correct pose"""
         row = self.error_df.iloc[idx]
         
         try:
-            # Calculate absolute frame numbers
+            # Calculate absolute frame numbers using user-configurable parameters
             trial_num = int(row['N'])
             relative_start = int(row['Start_Frame'])
             relative_end = int(row['End_Frame'])
-            absolute_start = relative_start + (trial_num - 1) * 1400
-            absolute_end = relative_end + (trial_num - 1) * 1400
-            trial_first_frame = (trial_num - 1) * 1400
+            frame_length = int(self.frame_length.get())
+            setup_time = int(self.setup_time.get())
+            absolute_start = relative_start + (trial_num - 1) * frame_length + setup_time
+            absolute_end = relative_end + (trial_num - 1) * frame_length + setup_time
+            trial_first_frame = (trial_num - 1) * frame_length + setup_time
         except Exception:
             return
             
@@ -1970,6 +2005,7 @@ Drag points to correct pose"""
         self._playing_error = True
         self._paused_error = False
         self._playback_state = None
+        self._in_playback_mode = True  # Enable fast playback mode
         self.play_error_btn.config(state='disabled')
         self.pause_error_btn.config(state='normal', text='Pause')
         
@@ -1987,6 +2023,7 @@ Drag points to correct pose"""
         if not self._paused_error:
             # Pause playback
             self._paused_error = True
+            self._in_playback_mode = False  # Disable fast playback mode when paused
             self.pause_error_btn.config(text='Resume')
             # Restore edit mode when paused
             if hasattr(self, '_original_edit_mode'):
@@ -1994,6 +2031,7 @@ Drag points to correct pose"""
         else:
             # Resume playback
             self._paused_error = False
+            self._in_playback_mode = True  # Re-enable fast playback mode when resuming
             self.pause_error_btn.config(text='Pause')
             # Disable edit mode during playback
             self.edit_mode_var.set(False)
@@ -2019,13 +2057,14 @@ Drag points to correct pose"""
             
         self._playback_state = None
         self.frame_var.set(str(current))
-        self.master.update_idletasks()
-        self.canvas.get_tk_widget().update_idletasks()
         
         if current < end and self.camera_var.get() == cam:
-            self.master.after(delay, lambda: self._play_error_frame_step(current + 1, end, cam, delay))
+            # Use a much shorter delay for faster playback
+            fast_delay = max(10, delay // 4)  # At least 10ms, but much faster than original
+            self.master.after(fast_delay, lambda: self._play_error_frame_step(current + 1, end, cam, delay))
         else:
             self._playing_error = False
+            self._in_playback_mode = False  # Disable fast playback mode
             self.play_error_btn.config(state='normal')
             self.pause_error_btn.config(state='disabled', text='Pause')
             # Restore original edit mode
