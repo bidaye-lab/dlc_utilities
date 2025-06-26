@@ -24,15 +24,7 @@ from tqdm import tqdm
 from io import StringIO
 from datetime import datetime
 import traceback
-
-# Import ErrorDetection with fallback
-try:
-    from src.ErrorDetection import ErrorDetection
-except ImportError:
-    try:
-        from ErrorDetection import ErrorDetection
-    except ImportError:
-        ErrorDetection = None
+from ErrorDetection import ErrorDetection
 
 # Set up logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -62,8 +54,10 @@ class ProofreadingInterface:
         self.genotype = tk.StringVar()
         self.status = tk.StringVar()
         self.fly_number = tk.StringVar()
+        self.type_folder = tk.StringVar()
         self.trial_folder = tk.StringVar()
         self.fly_options = []
+        self.type_options = []
         self.trial_options = []
         self.angles_file = None
         self.coords_file = None
@@ -82,7 +76,9 @@ class ProofreadingInterface:
         self.frame_length.trace_add('write', lambda *a: self.validate_setup())
         self.setup_time.trace_add('write', lambda *a: self.validate_setup())
         self.fly_number.trace_add('write', lambda *a: self.validate_setup())
-        self.fly_number.trace_add('write', lambda *a: self.populate_trial_options())
+        self.fly_number.trace_add('write', lambda *a: self.populate_type_options())
+        self.type_folder.trace_add('write', lambda *a: self.validate_setup())
+        self.type_folder.trace_add('write', lambda *a: self.populate_trial_options())
         self.trial_folder.trace_add('write', lambda *a: self.validate_setup())
         self.master.protocol("WM_DELETE_WINDOW", self._on_close)
 
@@ -158,9 +154,13 @@ class ProofreadingInterface:
             dnd_label = tk.Label(data_group, text="(or drag folder here)", 
                                relief='groove', height=2, bg='#f5f5f5')
             dnd_label.grid(row=2, column=0, sticky='ew', pady=(0, 5))
+            # Check if the label has the required methods for drag and drop
             if hasattr(dnd_label, 'drop_target_register') and hasattr(dnd_label, 'dnd_bind'):
-                dnd_label.drop_target_register(DND_FILES)
-                dnd_label.dnd_bind('<<Drop>>', self.on_drop)
+                try:
+                    dnd_label.drop_target_register(DND_FILES)  # type: ignore
+                    dnd_label.dnd_bind('<<Drop>>', self.on_drop)  # type: ignore
+                except Exception as e:
+                    logger.warning(f"Failed to set up drag and drop: {e}")
         
         # Analysis Parameters Section
         params_group = ttk.LabelFrame(main_frame, text="Analysis Parameters", padding=15)
@@ -196,15 +196,20 @@ class ProofreadingInterface:
                                         width=15, state='readonly')
         self.fly_combobox.grid(row=0, column=1, sticky='w')
         
-        tk.Label(subject_group, text="Trial Folder:").grid(row=1, column=0, sticky='w', padx=(0, 10), pady=(5, 0))
+        tk.Label(subject_group, text="Type Folder:").grid(row=1, column=0, sticky='w', padx=(0, 10), pady=(5, 0))
+        self.type_combobox = ttk.Combobox(subject_group, textvariable=self.type_folder, 
+                                          width=15, state='readonly')
+        self.type_combobox.grid(row=1, column=1, sticky='w', pady=(5, 0))
+        
+        tk.Label(subject_group, text="Trial Folder:").grid(row=2, column=0, sticky='w', padx=(0, 10), pady=(5, 0))
         self.trial_combobox = ttk.Combobox(subject_group, textvariable=self.trial_folder, 
                                           width=15, state='readonly')
-        self.trial_combobox.grid(row=1, column=1, sticky='w', pady=(5, 0))
+        self.trial_combobox.grid(row=2, column=1, sticky='w', pady=(5, 0))
         
-        tk.Label(subject_group, text="Genotype:").grid(row=2, column=0, sticky='w', padx=(0, 10), pady=(5, 0))
+        tk.Label(subject_group, text="Genotype:").grid(row=3, column=0, sticky='w', padx=(0, 10), pady=(5, 0))
         genotype_label = tk.Label(subject_group, textvariable=self.genotype, 
                                  font=('Courier', 10, 'bold'), fg='blue')
-        genotype_label.grid(row=2, column=1, sticky='w', pady=(5, 0))
+        genotype_label.grid(row=3, column=1, sticky='w', pady=(5, 0))
         
         # Limb Exclusion Section
         exclusion_group = ttk.LabelFrame(main_frame, text="Exclude Limbs from Correction", padding=15)
@@ -316,7 +321,7 @@ class ProofreadingInterface:
         fly_folders = []
         checked_folders = []
         
-        # Check root anipose directory
+        # Check root anipose directory for N folders first
         if os.path.isdir(anipose_dir):
             for name in os.listdir(anipose_dir):
                 full_path = os.path.join(anipose_dir, name)
@@ -324,33 +329,87 @@ class ProofreadingInterface:
                 if name.startswith('N') and os.path.isdir(full_path):
                     fly_folders.append(name[1:])
         
-        # If none found, check one level down
+        # If none found, check one level down (type folders)
         if not fly_folders and os.path.isdir(anipose_dir):
-            for subdir in os.listdir(anipose_dir):
-                subdir_path = os.path.join(anipose_dir, subdir)
-                if os.path.isdir(subdir_path):
-                    for name in os.listdir(subdir_path):
-                        full_path = os.path.join(subdir_path, name)
-                        checked_folders.append(full_path)
-                        if name.startswith('N') and os.path.isdir(full_path):
-                            fly_folders.append(name[1:])
+            for type_dir in os.listdir(anipose_dir):
+                type_path = os.path.join(anipose_dir, type_dir)
+                if os.path.isdir(type_path):
+                    # Look for project folder within type folder
+                    for project_dir in os.listdir(type_path):
+                        project_path = os.path.join(type_path, project_dir)
+                        if os.path.isdir(project_path):
+                            for name in os.listdir(project_path):
+                                full_path = os.path.join(project_path, name)
+                                checked_folders.append(full_path)
+                                if name.startswith('N') and os.path.isdir(full_path):
+                                    fly_folders.append(name[1:])
         
         logger.debug(f"Checked folders for fly options: {checked_folders}")
         self.fly_options = sorted(fly_folders, key=lambda x: int(x) if x.isdigit() else x)
         self.fly_combobox['values'] = self.fly_options
         if self.fly_options:
             self.fly_number.set(self.fly_options[0])
-            self.populate_trial_options()
+            self.populate_type_options()
         else:
             self.fly_number.set('')
+            self.type_options = []
+            self.type_combobox['values'] = []
+            self.type_folder.set('')
+            self.trial_options = []
+            self.trial_combobox['values'] = []
+            self.trial_folder.set('')
+
+    def populate_type_options(self):
+        """Populate type folder options for the selected fly number"""
+        folder = self.folder_path.get()
+        fly_num = self.fly_number.get()
+        if not fly_num:
+            return
+            
+        anipose_dir = os.path.join(folder, 'anipose')
+        n_folder_name = f'N{fly_num}'
+        type_folders = []
+        
+        # First check if N folder exists directly in anipose (no type folder)
+        direct_n_path = os.path.join(anipose_dir, n_folder_name)
+        if os.path.isdir(direct_n_path):
+            # No type folder needed, add "No Type" option
+            type_folders = ["No Type"]
+        else:
+            # Look for type folders in anipose directory
+            if os.path.isdir(anipose_dir):
+                for type_dir in os.listdir(anipose_dir):
+                    type_path = os.path.join(anipose_dir, type_dir)
+                    if os.path.isdir(type_path):
+                        # Check if this type folder contains the N folder
+                        # Look for project folder within type folder
+                        for project_dir in os.listdir(type_path):
+                            project_path = os.path.join(type_path, project_dir)
+                            if os.path.isdir(project_path):
+                                n_folder_path = os.path.join(project_path, n_folder_name)
+                                if os.path.isdir(n_folder_path):
+                                    type_folders.append(type_dir)
+                                    break
+        
+        if not type_folders:
+            type_folders = ["No Type"]
+        
+        self.type_options = sorted(type_folders)
+        self.type_combobox['values'] = self.type_options
+        if self.type_options:
+            self.type_folder.set(self.type_options[0])
+            self.populate_trial_options()
+        else:
+            self.type_folder.set('')
             self.trial_options = []
             self.trial_combobox['values'] = []
             self.trial_folder.set('')
 
     def populate_trial_options(self):
-        """Populate trial folder options for the selected fly number"""
+        """Populate trial folder options for the selected fly number and type"""
         folder = self.folder_path.get()
         fly_num = self.fly_number.get()
+        type_folder = self.type_folder.get()
         if not fly_num:
             return
             
@@ -359,23 +418,24 @@ class ProofreadingInterface:
         trial_folders = []
         n_folder_path = None
         
-        # Find the N{number} folder
-        if os.path.isdir(anipose_dir):
-            # Check direct children first
-            direct_path = os.path.join(anipose_dir, n_folder_name)
-            if os.path.isdir(direct_path):
-                n_folder_path = direct_path
-            else:
-                # Check one level down in subdirs
-                for subdir in os.listdir(anipose_dir):
-                    subdir_path = os.path.join(anipose_dir, subdir)
-                    if os.path.isdir(subdir_path):
-                        test_path = os.path.join(subdir_path, n_folder_name)
-                        if os.path.isdir(test_path):
-                            n_folder_path = test_path
+        # Find the N{number} folder based on type folder selection
+        if type_folder and type_folder != "No Type":
+            # Look in type_folder/project/N{fly_num}
+            type_path = os.path.join(anipose_dir, type_folder)
+            if os.path.isdir(type_path):
+                for project_dir in os.listdir(type_path):
+                    project_path = os.path.join(type_path, project_dir)
+                    if os.path.isdir(project_path):
+                        n_folder_path = os.path.join(project_path, n_folder_name)
+                        if os.path.isdir(n_folder_path):
                             break
+        else:
+            # Look directly in anipose/N{fly_num}
+            n_folder_path = os.path.join(anipose_dir, n_folder_name)
+            if not os.path.isdir(n_folder_path):
+                n_folder_path = None
         
-        # Look for trial folders containing pose-3d or angles
+        # Look for trial folders within the N folder
         if n_folder_path and os.path.isdir(n_folder_path):
             for item in os.listdir(n_folder_path):
                 item_path = os.path.join(n_folder_path, item)
@@ -401,12 +461,13 @@ class ProofreadingInterface:
         frame_len = self.frame_length.get()
         setup = self.setup_time.get()
         fly_num = self.fly_number.get()
+        type_folder = self.type_folder.get()
         trial_folder = self.trial_folder.get()
         
         self.file_status_text.config(state='normal')
         self.file_status_text.delete(1.0, 'end')
         
-        if not all([folder, frame_len, setup, fly_num, trial_folder]):
+        if not all([folder, frame_len, setup, fly_num, type_folder, trial_folder]):
             self.file_status_text.insert(1.0, "Please complete all fields above")
             self.file_status_text.config(state='disabled')
             self.status.set("Setup incomplete")
@@ -425,7 +486,7 @@ class ProofreadingInterface:
             return False
         
         # Find required data files
-        genotype, coords_path, angles_path = self._find_data_files(folder, fly_num, trial_folder)
+        genotype, coords_path, angles_path = self._find_data_files(folder, fly_num, type_folder, trial_folder)
         
         status_text = []
         if genotype:
@@ -461,7 +522,7 @@ class ProofreadingInterface:
             self.process_btn.config(state='disabled')
             return False
 
-    def _find_data_files(self, folder, fly_num, trial_folder):
+    def _find_data_files(self, folder, fly_num, type_folder, trial_folder):
         """Find and validate data files"""
         genotype = ''
         coords_path = None
@@ -469,44 +530,49 @@ class ProofreadingInterface:
         anipose_dir = os.path.join(folder, 'anipose')
         
         n_folder_name = f'N{fly_num}'
-        base_n_path = os.path.join(anipose_dir, n_folder_name)
         found = False
         
-        # Construct paths with trial folder if specified
-        if trial_folder and trial_folder != "No Trial":
-            pose3d_dir = os.path.join(base_n_path, trial_folder, 'pose-3d')
-            angles_dir = os.path.join(base_n_path, trial_folder, 'angles')
+        # Construct paths based on type folder selection
+        if type_folder and type_folder != "No Type":
+            # Look in type_folder/project/N{fly_num}
+            type_path = os.path.join(anipose_dir, type_folder)
+            if os.path.isdir(type_path):
+                for project_dir in os.listdir(type_path):
+                    project_path = os.path.join(type_path, project_dir)
+                    if os.path.isdir(project_path):
+                        base_n_path = os.path.join(project_path, n_folder_name)
+                        if os.path.isdir(base_n_path):
+                            if trial_folder and trial_folder != "No Trial":
+                                pose3d_dir = os.path.join(base_n_path, trial_folder, 'pose-3d')
+                                angles_dir = os.path.join(base_n_path, trial_folder, 'angles')
+                            else:
+                                pose3d_dir = os.path.join(base_n_path, 'pose-3d')
+                                angles_dir = os.path.join(base_n_path, 'angles')
+                            
+                            logger.info(f"Looking for pose3d_dir: {pose3d_dir}")
+                            logger.info(f"Looking for angles_dir: {angles_dir}")
+                            
+                            if os.path.isdir(pose3d_dir):
+                                found = True
+                                logger.info(f"Found pose3d_dir: {pose3d_dir}")
+                                break
         else:
-            pose3d_dir = os.path.join(base_n_path, 'pose-3d')
-            angles_dir = os.path.join(base_n_path, 'angles')
-        
-        logger.info(f"Looking for pose3d_dir: {pose3d_dir}")
-        logger.info(f"Looking for angles_dir: {angles_dir}")
-        
-        if os.path.isdir(pose3d_dir):
-            found = True
-            logger.info(f"Found pose3d_dir: {pose3d_dir}")
-        
-        # Check one level down if not found
-        if not found and os.path.isdir(anipose_dir):
-            for subdir in os.listdir(anipose_dir):
-                subdir_path = os.path.join(anipose_dir, subdir)
-                test_base_path = os.path.join(subdir_path, n_folder_name)
-                if os.path.isdir(test_base_path):
-                    if trial_folder and trial_folder != "No Trial":
-                        test_pose3d = os.path.join(test_base_path, trial_folder, 'pose-3d')
-                        test_angles = os.path.join(test_base_path, trial_folder, 'angles')
-                    else:
-                        test_pose3d = os.path.join(test_base_path, 'pose-3d')
-                        test_angles = os.path.join(test_base_path, 'angles')
-                    
-                    logger.info(f"Checking subdir {subdir}: test_pose3d = {test_pose3d}")
-                    if os.path.isdir(test_pose3d):
-                        pose3d_dir = test_pose3d
-                        angles_dir = test_angles
-                        found = True
-                        logger.info(f"Found pose3d_dir in subdir: {pose3d_dir}")
-                        break
+            # Look directly in anipose/N{fly_num}
+            base_n_path = os.path.join(anipose_dir, n_folder_name)
+            if os.path.isdir(base_n_path):
+                if trial_folder and trial_folder != "No Trial":
+                    pose3d_dir = os.path.join(base_n_path, trial_folder, 'pose-3d')
+                    angles_dir = os.path.join(base_n_path, trial_folder, 'angles')
+                else:
+                    pose3d_dir = os.path.join(base_n_path, 'pose-3d')
+                    angles_dir = os.path.join(base_n_path, 'angles')
+                
+                logger.info(f"Looking for pose3d_dir: {pose3d_dir}")
+                logger.info(f"Looking for angles_dir: {angles_dir}")
+                
+                if os.path.isdir(pose3d_dir):
+                    found = True
+                    logger.info(f"Found pose3d_dir: {pose3d_dir}")
         
         if found:
             logger.info(f"Searching for CSV files in: {pose3d_dir}")
@@ -580,6 +646,11 @@ class ProofreadingInterface:
             # Create output directory
             output_dir = os.path.join(self.folder_path.get(), 
                                     f"proofreader-output-{genotype}-N{self.fly_number.get()}")
+            
+            # Add type subfolder if a type is selected
+            type_folder = self.type_folder.get()
+            if type_folder and type_folder != "No Type":
+                output_dir = os.path.join(output_dir, type_folder)
             
             # Add trial subfolder if a trial is selected
             trial_folder = self.trial_folder.get()
@@ -688,6 +759,11 @@ class ProofreadingInterface:
         genotype = self.genotype.get()
         output_dir = os.path.join(folder, f"proofreader-output-{genotype}-N{fly_num}")
         
+        # Add type subfolder if a type is selected
+        type_folder = self.type_folder.get()
+        if type_folder and type_folder != "No Type":
+            output_dir = os.path.join(output_dir, type_folder)
+        
         # Add trial subfolder if a trial is selected
         trial_folder = self.trial_folder.get()
         if trial_folder and trial_folder != "No Trial":
@@ -795,32 +871,36 @@ class ProofreadingInterface:
         # Find anipose directory robustly
         anipose_root = os.path.join(folder, 'anipose')
         n_folder_name = f'N{fly_num}'
+        type_folder = self.type_folder.get()
         trial_folder = self.trial_folder.get()
         anipose_dir = None
         
-        # Check direct children of anipose_root
-        if os.path.isdir(anipose_root):
-            for project in os.listdir(anipose_root):
-                project_path = os.path.join(anipose_root, project)
-                if os.path.isdir(project_path):
-                    n_folder_path = os.path.join(project_path, n_folder_name)
-                    if os.path.isdir(n_folder_path):
-                        # Include trial folder in path if specified
-                        if trial_folder and trial_folder != "No Trial":
-                            anipose_dir = os.path.join(n_folder_path, trial_folder)
-                        else:
-                            anipose_dir = n_folder_path
-                        break
-        
-        # Fallback: check if anipose_root/N{fly_num} exists directly
-        if anipose_dir is None:
+        # Find the N{number} folder based on type folder selection
+        if type_folder and type_folder != "No Type":
+            # Look in type_folder/project/N{fly_num}
+            type_path = os.path.join(anipose_root, type_folder)
+            if os.path.isdir(type_path):
+                for project_dir in os.listdir(type_path):
+                    project_path = os.path.join(type_path, project_dir)
+                    if os.path.isdir(project_path):
+                        n_folder_path = os.path.join(project_path, n_folder_name)
+                        if os.path.isdir(n_folder_path):
+                            # Include trial folder in path if specified
+                            if trial_folder and trial_folder != "No Trial":
+                                anipose_dir = os.path.join(n_folder_path, trial_folder)
+                            else:
+                                anipose_dir = n_folder_path
+                            break
+        else:
+            # Look directly in anipose/N{fly_num}
             n_folder_path = os.path.join(anipose_root, n_folder_name)
             if os.path.isdir(n_folder_path):
+                # Include trial folder in path if specified
                 if trial_folder and trial_folder != "No Trial":
                     anipose_dir = os.path.join(n_folder_path, trial_folder)
                 else:
                     anipose_dir = n_folder_path
-                    
+        
         if anipose_dir is None:
             tk.Label(self.video_frame, text=f"Could not find anipose/project/{n_folder_name}", fg='red').pack(pady=20)
             return
@@ -918,12 +998,22 @@ class ProofreadingInterface:
 
     def _find_video_files(self, folder, fly_num):
         """Find available video files"""
+        type_folder = self.type_folder.get()
         trial_folder = self.trial_folder.get()
-        n_folder = os.path.join(folder, f'N{fly_num}')
         
-        # Include trial folder in path if specified
-        if trial_folder and trial_folder != "No Trial":
-            n_folder = os.path.join(n_folder, trial_folder)
+        # Construct video path based on type folder selection
+        if type_folder and type_folder != "No Type":
+            # Video path: {input_folder}/N{number}/{type_if_there_is_one}/{trial_ifthereisone}/
+            n_folder = os.path.join(folder, f'N{fly_num}')
+            if type_folder and type_folder != "No Type":
+                n_folder = os.path.join(n_folder, type_folder)
+            if trial_folder and trial_folder != "No Trial":
+                n_folder = os.path.join(n_folder, trial_folder)
+        else:
+            # Video path: {input_folder}/N{number}/{trial_ifthereisone}/
+            n_folder = os.path.join(folder, f'N{fly_num}')
+            if trial_folder and trial_folder != "No Trial":
+                n_folder = os.path.join(n_folder, trial_folder)
             
         ball_folder = os.path.join(n_folder, 'Ball')
         
@@ -1184,6 +1274,11 @@ Drag points to correct pose"""
             genotype = self.genotype.get()
             output_dir = os.path.join(folder, f"proofreader-output-{genotype}-N{fly_num}")
             
+            # Add type subfolder if a type is selected
+            type_folder = self.type_folder.get()
+            if type_folder and type_folder != "No Type":
+                output_dir = os.path.join(output_dir, type_folder)
+            
             # Add trial subfolder if a trial is selected
             trial_folder = self.trial_folder.get()
             if trial_folder and trial_folder != "No Trial":
@@ -1224,6 +1319,11 @@ Drag points to correct pose"""
             fly_num = self.fly_number.get()
             genotype = self.genotype.get()
             output_dir = os.path.join(folder, f"proofreader-output-{genotype}-N{fly_num}")
+            
+            # Add type subfolder if a type is selected
+            type_folder = self.type_folder.get()
+            if type_folder and type_folder != "No Type":
+                output_dir = os.path.join(output_dir, type_folder)
             
             # Add trial subfolder if a trial is selected
             trial_folder = self.trial_folder.get()
@@ -1360,6 +1460,7 @@ Drag points to correct pose"""
         """Display pose estimation points from corrected-pose2d .h5 files"""
         folder = self.folder_path.get()
         fly_num = self.fly_number.get()
+        type_folder = self.type_folder.get()
         trial_folder = self.trial_folder.get()
         
         # Find correct anipose directory
@@ -1367,28 +1468,34 @@ Drag points to correct pose"""
         n_folder_name = f'N{fly_num}'
         anipose_dir = None
         
-        if os.path.isdir(anipose_root):
-            for project in os.listdir(anipose_root):
-                project_path = os.path.join(anipose_root, project)
-                if os.path.isdir(project_path):
-                    n_folder_path = os.path.join(project_path, n_folder_name)
-                    if os.path.isdir(n_folder_path):
-                        if trial_folder and trial_folder != "No Trial":
-                            anipose_dir = os.path.join(n_folder_path, trial_folder)
-                        else:
-                            anipose_dir = n_folder_path
-                        break
-                        
-        if anipose_dir is None:
+        # Find the N{number} folder based on type folder selection
+        if type_folder and type_folder != "No Type":
+            # Look in type_folder/project/N{fly_num}
+            type_path = os.path.join(anipose_root, type_folder)
+            if os.path.isdir(type_path):
+                for project_dir in os.listdir(type_path):
+                    project_path = os.path.join(type_path, project_dir)
+                    if os.path.isdir(project_path):
+                        n_folder_path = os.path.join(project_path, n_folder_name)
+                        if os.path.isdir(n_folder_path):
+                            # Include trial folder in path if specified
+                            if trial_folder and trial_folder != "No Trial":
+                                anipose_dir = os.path.join(n_folder_path, trial_folder)
+                            else:
+                                anipose_dir = n_folder_path
+                            break
+        else:
+            # Look directly in anipose/N{fly_num}
             n_folder_path = os.path.join(anipose_root, n_folder_name)
             if os.path.isdir(n_folder_path):
+                # Include trial folder in path if specified
                 if trial_folder and trial_folder != "No Trial":
                     anipose_dir = os.path.join(n_folder_path, trial_folder)
                 else:
                     anipose_dir = n_folder_path
                     
         if anipose_dir is None:
-            logger.error(f"Could not find anipose/project/{n_folder_name}")
+            logger.error(f"Could not find anipose directory for N{fly_num}")
             return
         
         # Load pose data from corrected directory
@@ -1806,6 +1913,11 @@ Drag points to correct pose"""
             genotype = self.genotype.get()
             if folder and fly_num and genotype:
                 output_dir = os.path.join(folder, f"proofreader-output-{genotype}-N{fly_num}")
+                
+                # Add type subfolder if a type is selected
+                type_folder = self.type_folder.get()
+                if type_folder and type_folder != "No Type":
+                    output_dir = os.path.join(output_dir, type_folder)
                 
                 # Add trial subfolder if a trial is selected
                 trial_folder = self.trial_folder.get()
