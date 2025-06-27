@@ -26,6 +26,9 @@ from io import StringIO
 from datetime import datetime
 import traceback
 from ErrorDetection import ErrorDetection
+import tempfile
+import threading
+import winreg
 
 # Set up logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -34,6 +37,33 @@ log_stream = StringIO()
 stream_handler = logging.StreamHandler(log_stream)
 stream_handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
 logger.addHandler(stream_handler)
+
+# Add periodic log saving for compiled version
+def save_log_periodically():
+    """Save log periodically to prevent loss on crashes"""
+    try:
+        # Get current log content
+        log_content = log_stream.getvalue()
+        if log_content.strip():
+            # Save to a temporary location that should always be writable
+            temp_dir = tempfile.gettempdir()
+            log_file = os.path.join(temp_dir, "proofreader_gui_log.txt")
+            with open(log_file, "w", encoding="utf-8") as f:
+                f.write(log_content)
+    except Exception as e:
+        # Don't log this error to avoid infinite recursion
+        pass
+
+# Set up periodic log saving (every 30 seconds)
+def periodic_log_saver():
+    """Background thread to save logs periodically"""
+    while True:
+        time.sleep(30)  # Save every 30 seconds
+        save_log_periodically()
+
+# Start log saver thread
+log_saver_thread = threading.Thread(target=periodic_log_saver, daemon=True)
+log_saver_thread.start()
 
 # Optional drag-and-drop support
 try:
@@ -46,7 +76,19 @@ class ProofreadingInterface:
     def __init__(self, master):
         self.master = master
         self.master.title("Proofreading GUI")
+        
         self.master.geometry("1200x800")
+        
+        # Set window icons
+        try:
+            icon_path = os.path.join(os.path.dirname(__file__), "PRUI_Icon.ico")
+            if os.path.exists(icon_path):
+                self.master.iconbitmap(icon_path)
+                logger.info(f"Window icon set from: {icon_path}")
+            else:
+                logger.warning(f"Icon file not found: {icon_path}")
+        except Exception as e:
+            logger.warning(f"Could not set window icon: {e}")
         
         # Core application variables
         self.folder_path = tk.StringVar()
@@ -663,6 +705,10 @@ class ProofreadingInterface:
             if trial_folder and trial_folder != "No Trial":
                 output_dir = os.path.join(output_dir, trial_folder)
             
+            # Get a writable output directory
+            output_dir = self._get_writable_output_dir(output_dir)
+            logger.info(f"Using output directory: {output_dir}")
+            
             os.makedirs(output_dir, exist_ok=True)
             
             # Determine angle columns based on user selection
@@ -774,6 +820,10 @@ class ProofreadingInterface:
         trial_folder = self.trial_folder.get()
         if trial_folder and trial_folder != "No Trial":
             output_dir = os.path.join(output_dir, trial_folder)
+        
+        # Get a writable output directory
+        output_dir = self._get_writable_output_dir(output_dir)
+        logger.info(f"Using output directory for video interface: {output_dir}")
             
         error_file = os.path.join(output_dir, "bunched_outlier_errors.csv")
         progress_file = os.path.join(output_dir, "proofread_progress.csv")
@@ -930,7 +980,11 @@ class ProofreadingInterface:
                                 src_path = os.path.join(subdir, f)
                                 dst_path = os.path.join(corrected_dir, f)
                                 if not os.path.isfile(dst_path):
-                                    shutil.copy2(src_path, dst_path)
+                                    try:
+                                        shutil.copy2(src_path, dst_path)
+                                        logger.info(f"Copied CSV file: {f}")
+                                    except Exception as e:
+                                        logger.warning(f"Failed to copy CSV file {f}: {e}")
                                 break
         
         # Copy H5 files from pose-2d-filtered directory
@@ -957,8 +1011,11 @@ class ProofreadingInterface:
                         dst_path = os.path.join(corrected_dir, f)
                         logger.info(f"Copying {src_path} to {dst_path}")
                         if not os.path.isfile(dst_path):
-                            shutil.copy2(src_path, dst_path)
-                            logger.info(f"Successfully copied {f}")
+                            try:
+                                shutil.copy2(src_path, dst_path)
+                                logger.info(f"Successfully copied {f}")
+                            except Exception as e:
+                                logger.warning(f"Failed to copy H5 file {f}: {e}")
                         else:
                             logger.info(f"File {f} already exists in destination")
             logger.info(f"All available H5 files in pose-2d-filtered: {available_h5s}")
@@ -989,8 +1046,11 @@ class ProofreadingInterface:
                                 dst_path = os.path.join(corrected_dir, f)
                                 logger.info(f"Copying {src_path} to {dst_path}")
                                 if not os.path.isfile(dst_path):
-                                    shutil.copy2(src_path, dst_path)
-                                    logger.info(f"Successfully copied {f}")
+                                    try:
+                                        shutil.copy2(src_path, dst_path)
+                                        logger.info(f"Successfully copied {f}")
+                                    except Exception as e:
+                                        logger.warning(f"Failed to copy H5 file {f}: {e}")
                                 break
                     break
         
@@ -1380,6 +1440,9 @@ cached frames (see cache controls)"""
             trial_folder = self.trial_folder.get()
             if trial_folder and trial_folder != "No Trial":
                 output_dir = os.path.join(output_dir, trial_folder)
+            
+            # Get a writable output directory
+            output_dir = self._get_writable_output_dir(output_dir)
                 
             progress_file = os.path.join(output_dir, "proofread_progress.csv")
             if os.path.isfile(progress_file):
@@ -1626,6 +1689,16 @@ cached frames (see cache controls)"""
         # Load pose data with caching
         if cam not in self.pose_cache or self.last_csv_path.get(cam) != h5_path:
             try:
+                # Check if file exists and is readable
+                if not os.path.isfile(h5_path):
+                    logger.error(f"H5 file does not exist: {h5_path}")
+                    return
+                
+                # Check file size to ensure it's not empty
+                if os.path.getsize(h5_path) == 0:
+                    logger.error(f"H5 file is empty: {h5_path}")
+                    return
+                
                 self.pose_cache[cam] = pd.read_hdf(h5_path)
                 self.last_csv_path[cam] = h5_path
                 
@@ -2071,7 +2144,8 @@ cached frames (see cache controls)"""
         total_cameras = len(self._pending_pose_edits)
         current_camera = 0
         
-        for cam in tqdm(list(self._pending_pose_edits), desc="Saving pose edits", unit="camera"):
+        # Use a simple loop instead of tqdm for compiled version compatibility
+        for cam in list(self._pending_pose_edits):
             current_camera += 1
             progress_per_camera = 100 // total_cameras
             start_progress = (current_camera - 1) * progress_per_camera
@@ -2084,14 +2158,35 @@ cached frames (see cache controls)"""
             # Only save to corrected-pose-2d directory
             if pose_df is not None and h5_path and 'corrected-pose-2d' in h5_path:
                 try:
+                    # Check if directory exists and is writable
+                    h5_dir = os.path.dirname(h5_path)
+                    if not os.path.exists(h5_dir):
+                        os.makedirs(h5_dir, exist_ok=True)
+                    
                     self._update_save_progress(start_progress + progress_per_camera // 3, f"Saving H5 file for {cam}")
                     logger.info(f"Saving H5 file: {h5_path}")
-                    pose_df.to_hdf(h5_path, key='df', mode='w')
+                    
+                    # Use a temporary file first to avoid corruption
+                    temp_h5_path = h5_path + '.tmp'
+                    pose_df.to_hdf(temp_h5_path, key='df', mode='w')
+                    
+                    # Move temp file to final location
+                    if os.path.exists(h5_path):
+                        os.remove(h5_path)
+                    os.rename(temp_h5_path, h5_path)
                     
                     self._update_save_progress(start_progress + 2 * progress_per_camera // 3, f"Saving CSV file for {cam}")
                     csv_path = h5_path.replace('.h5', '.csv')
                     logger.info(f"Saving CSV file: {csv_path}")
-                    pose_df.to_csv(csv_path, index=False)
+                    
+                    # Use a temporary file for CSV too
+                    temp_csv_path = csv_path + '.tmp'
+                    pose_df.to_csv(temp_csv_path, index=False)
+                    
+                    # Move temp file to final location
+                    if os.path.exists(csv_path):
+                        os.remove(csv_path)
+                    os.rename(temp_csv_path, csv_path)
                     
                     self._update_save_progress(start_progress + progress_per_camera, f"Completed saving {cam}")
                     logger.info(f"Saved edits for {cam} to both H5 and CSV formats")
@@ -2099,10 +2194,20 @@ cached frames (see cache controls)"""
                 except Exception as e:
                     logger.error(f"Failed to save edits for {cam}: {e}")
                     self.status.set(f"Error saving {cam}: {e}")
+                    # Try to clean up temp files
+                    for temp_path in [temp_h5_path, temp_csv_path]:
+                        if 'temp_path' in locals() and os.path.exists(temp_path):
+                            try:
+                                os.remove(temp_path)
+                            except:
+                                pass
             else:
                 logger.warning(f"Not saving - conditions not met: pose_df={pose_df is not None}, h5_path={h5_path}, corrected-pose-2d in path={'corrected-pose-2d' in h5_path if h5_path else False}")
             
             self._pending_pose_edits.discard(cam)
+            
+            # Force UI update
+            self.master.update_idletasks()
         
         self._update_save_progress(100, "Save completed")
         self.master.after(500, self._hide_save_progress)
@@ -2117,39 +2222,69 @@ cached frames (see cache controls)"""
 
     def _on_close(self):
         """Handle application close event"""
-        self._save_pending_pose_edits()
-        if self.current_video_cap is not None:
-            self.current_video_cap.release()
-            self.current_video_cap = None
-            self.current_video_path = None
-            self.last_frame_idx = None
-        # Save log file to proofreader-output dir
         try:
-            folder = self.folder_path.get()
-            fly_num = self.fly_number.get()
-            genotype = self.genotype.get()
-            if folder and fly_num and genotype:
-                output_dir = os.path.join(folder, f"proofreader-output-{genotype}-N{fly_num}")
-                
-                # Add type subfolder if a type is selected
-                type_folder = self.type_folder.get()
-                if type_folder and type_folder != "No Type":
-                    output_dir = os.path.join(output_dir, type_folder)
-                
-                # Add trial subfolder if a trial is selected
-                trial_folder = self.trial_folder.get()
-                if trial_folder and trial_folder != "No Trial":
-                    output_dir = os.path.join(output_dir, trial_folder)
+            # Save logs immediately before any other operations
+            save_log_periodically()
+            
+            # Try to save pending edits, but don't block if it fails
+            if self._pending_pose_edits:
+                try:
+                    self._save_pending_pose_edits()
+                except Exception as e:
+                    logger.error(f"Failed to save pending edits on close: {e}")
+                    # Continue with close even if save fails
+            
+            # Clean up video capture
+            if self.current_video_cap is not None:
+                self.current_video_cap.release()
+                self.current_video_cap = None
+                self.current_video_path = None
+                self.last_frame_idx = None
+            
+            # Save log file to proofreader-output dir if possible
+            try:
+                folder = self.folder_path.get()
+                fly_num = self.fly_number.get()
+                genotype = self.genotype.get()
+                if folder and fly_num and genotype:
+                    output_dir = os.path.join(folder, f"proofreader-output-{genotype}-N{fly_num}")
                     
-                os.makedirs(output_dir, exist_ok=True)
-                timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-                log_path = os.path.join(output_dir, f"proofreader_log_{timestamp}.log")
-                with open(log_path, "w", encoding="utf-8") as f:
-                    f.write(log_stream.getvalue())
-                logger.info(f"Log file saved to {log_path}")
+                    # Add type subfolder if a type is selected
+                    type_folder = self.type_folder.get()
+                    if type_folder and type_folder != "No Type":
+                        output_dir = os.path.join(output_dir, type_folder)
+                    
+                    # Add trial subfolder if a trial is selected
+                    trial_folder = self.trial_folder.get()
+                    if trial_folder and trial_folder != "No Trial":
+                        output_dir = os.path.join(output_dir, trial_folder)
+                        
+                    # Get a writable output directory
+                    output_dir = self._get_writable_output_dir(output_dir)
+                        
+                    os.makedirs(output_dir, exist_ok=True)
+                    timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+                    log_path = os.path.join(output_dir, f"proofreader_log_{timestamp}.log")
+                    with open(log_path, "w", encoding="utf-8") as f:
+                        f.write(log_stream.getvalue())
+                    logger.info(f"Log file saved to {log_path}")
+            except Exception as e:
+                logger.error(f"Failed to save log file: {e}")
+                # Try to save to temp directory as fallback
+                try:
+                    temp_dir = tempfile.gettempdir()
+                    timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+                    fallback_log_path = os.path.join(temp_dir, f"proofreader_gui_final_log_{timestamp}.log")
+                    with open(fallback_log_path, "w", encoding="utf-8") as f:
+                        f.write(log_stream.getvalue())
+                    logger.info(f"Fallback log file saved to {fallback_log_path}")
+                except Exception as e2:
+                    logger.error(f"Failed to save fallback log file: {e2}")
         except Exception as e:
-            logger.error(f"Failed to save log file: {e}")
-        self.master.destroy()
+            logger.error(f"Error during application close: {e}")
+        finally:
+            # Always destroy the window
+            self.master.destroy()
 
     def _get_cached_frame(self, cam, frame_num):
         """Get frame from cache if available"""
@@ -2549,6 +2684,43 @@ cached frames (see cache controls)"""
                     self._update_target_info()
                     self.update_display()
                     return
+
+    def _get_writable_output_dir(self, base_output_dir):
+        """Get a writable output directory, with fallbacks if needed"""
+        # Try the original directory first
+        if os.path.exists(base_output_dir):
+            try:
+                # Test write permission
+                test_file = os.path.join(base_output_dir, "test_write.tmp")
+                with open(test_file, 'w') as f:
+                    f.write("test")
+                os.remove(test_file)
+                return base_output_dir
+            except Exception:
+                logger.warning(f"Cannot write to {base_output_dir}, trying fallback locations")
+        
+        # Try to create the directory
+        try:
+            os.makedirs(base_output_dir, exist_ok=True)
+            return base_output_dir
+        except Exception:
+            logger.warning(f"Cannot create {base_output_dir}, using fallback")
+        
+        # Fallback to user's documents folder
+        try:
+            with winreg.OpenKey(winreg.HKEY_CURRENT_USER, r"Software\Microsoft\Windows\CurrentVersion\Explorer\Shell Folders") as key:
+                documents_path = winreg.QueryValueEx(key, "Personal")[0]
+            fallback_dir = os.path.join(documents_path, "ProofreadingGUI_Output")
+            os.makedirs(fallback_dir, exist_ok=True)
+            logger.info(f"Using fallback output directory: {fallback_dir}")
+            return fallback_dir
+        except Exception:
+            # Final fallback to temp directory
+            temp_dir = tempfile.gettempdir()
+            fallback_dir = os.path.join(temp_dir, "ProofreadingGUI_Output")
+            os.makedirs(fallback_dir, exist_ok=True)
+            logger.info(f"Using temp fallback output directory: {fallback_dir}")
+            return fallback_dir
 
 def main():
     """Main application entry point"""
