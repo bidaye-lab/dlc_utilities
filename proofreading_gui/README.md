@@ -1,10 +1,9 @@
-
 <img src="PRUI_Icon.png" alt="Proofreading GUI logo" title="Proofreading GUI" align="right" height="60" />
 
 
 # Proofreading GUI
 
-A comprehensive GUI application built with Python's tkinter for proofreading and correcting DLC (DeepLabCut) assigned joint positions in fly behavior analysis. The application provides an interface for correcting tracking errors in pose estimation data. The application contains built-in error detection algorithms and video playback capabilities.
+A GUI application built with Python's tkinter for proofreading and correcting DLC (DeepLabCut) assigned joint positions. The application provides an interface for correcting tracking errors in pose estimation data with built-in error detection algorithms and video playback capabilities.
 
 ## Table of Contents
 
@@ -20,7 +19,7 @@ A comprehensive GUI application built with Python's tkinter for proofreading and
 
 ## 🎯 Overview
 
-The Proofreading GUI is designed specifically for researchers working with fly position data using DeepLabCut and Anipose. It provides:
+The Proofreading GUI is designed for researchers working with fly position data using DeepLabCut and Anipose. It provides:
 
 - **Pose correction** with drag-and-drop
 - **Automated error detection** explained in [Error Detection](#-error-detection-system) and more in depth with [Technical Details](#-technical-details)
@@ -40,8 +39,10 @@ The Proofreading GUI is designed specifically for researchers working with fly p
 - **Batch error processing**: Process multiple error types simultaneously
 
 ### 📹 Video Integration
-- **Frame caching**: Optimized performance with intelligent frame caching
-- **Error range playback**: Automatically play through detected error ranges
+- **Frame caching**: Optimized performance with frame caching (5-20 frames configurable)
+- **Error range playback**: Automatically play through detected error ranges with configurable margins
+- **Playback speed control**: Adjustable playback speed 
+- **Trial boundary respect**: Option to cut playback at trial boundaries
 
 ### 📊 Data Management
 - **Multiple output formats**: Save corrected data as CSV and HDF5 files
@@ -88,7 +89,6 @@ The Proofreading GUI is designed specifically for researchers working with fly p
    python main.py
    ```
 
-
 ### Method 3: Building from Source
 
 1. **Follow Method 2 steps 1-3**
@@ -103,7 +103,7 @@ The Proofreading GUI is designed specifically for researchers working with fly p
 
 ## 📁 Expected File Structure
 
-The application is highly adaptive and can work with various folder structures. It automatically detects and adapts to different organizational patterns:
+The application can work with various folder structures and automatically detects different organizational patterns:
 
 #### Pattern 1: Simple Structure
 ```
@@ -192,7 +192,7 @@ input-folder/
 The application creates output in two different locations:
 
 ### Error Reports and Logs
-- **Location**: `input-folder/proofreader-output-{genotype}-N{number}/`
+- **Location**: `input-folder/proofreader-output-{genotype}-N{number}/` (with type/trial subfolders if applicable)
 - **Files**:
   - `bunched_outlier_errors.csv`: Detected errors with frame ranges and severity
   - `proofread_progress.csv`: Tracking of which errors have been reviewed
@@ -201,10 +201,9 @@ The application creates output in two different locations:
 ### Corrected Data
 - **Location**: `input-folder/anipose/.../corrected-pose-2d/`
 - **Files**:
-  - `angles_corrected.csv`: Corrected joint angle data
-  - `coords_corrected.csv`: Corrected 3D coordinate data  
-  - `corrected-pose-2d.h5`: HDF5 format with all corrected data
-  - `{camera}_*.csv/h5`: Individual camera files for further processing
+  - `{genotype}-{camera}.h5`: HDF5 format with corrected pose data for each camera
+  - `{genotype}-{camera}.csv`: CSV format with corrected pose data for each camera
+  - Additional camera files as needed for multi-camera setups
 
 ### File Format Requirements
 
@@ -223,36 +222,40 @@ The application creates output in two different locations:
 
 ![Setup Page](setup_page.png)
 
-
 1. **Select Project Folder**
    - Click "Browse..." to select your input folder
    - Or drag and drop the folder onto the interface
 
 2. **Configure Parameters**
-   - **Frame Length**: Number of frames per segment (default: 1400)
-   - **Setup Time**: Initial offset for segments (default: 0)
+   - **Run Frames**: Number of frames per segment (default: 1400)
+   - **Start Frame**: Initial offset for segments (default: 0)
 
 3. **Select Data**
    - Choose the fly number from the dropdown
    - Select the type folder (if applicable)
    - Choose the trial folder (if multiple trials exist)
 
+4. **Configure Error Detection**
+   - **Use all points**: Check to use all available points/angles for error detection (advanced)
+   - **Exclude limbs**: Select specific limbs to exclude from error detection and correction
+
 ### 3. Error Detection and Correction
 
 ![Home Page](home.png)
 
-
 1. **Run Error Detection**
-   - Click "Run Correction" to start the error detection process
+   - Click "Run Error Detection" to start the error detection process
    - The system will analyze angles and segment lengths for outliers
 
 2. **Navigate Errors**
    - Use "Next Error" and "Previous Error" buttons
    - Or click directly on error entries in the list
+   - Click on error number to edit and jump to specific error
 
 3. **Correct Poses**
    - Click and drag joint positions on the video frames
-   - Changes are automatically saved
+   - Click on empty space to move selected point
+   - Changes are automatically saved to corrected-pose-2d directory
 
 4. **Video Playback**
    - Use play/pause controls for video playback
@@ -265,6 +268,7 @@ The application creates output in two different locations:
 - Switch between cameras using the camera dropdown
 - View multiple camera angles simultaneously
 - Each camera shows the same frame with different perspectives
+- Automatic camera recommendations based on error type
 
 #### Limb Selection
 - Select specific limbs for correction using checkboxes
@@ -285,8 +289,9 @@ The application creates output in two different locations:
 
 #### Mouse Controls
 - **Left Click + Drag**: Move joint positions on video frames
-- **Left Click or Right Click on Point**: Select a point for editing
+- **Left Click on Point**: Select a point for editing
 - **Left Click on Empty Space**: Move selected point to new position
+- **Hover over Point**: Show point label (if enabled)
 
 ## 🔧 Configuration
 
@@ -302,6 +307,11 @@ polyorder = 8              # Polynomial order for smoothing
 
 # Length outlier detection
 length_pairs = [("TiTa", "TaG")]  # Segment pairs to analyze
+
+# Default angle columns (if not using all points)
+angle_columns = [
+    'L1D_flex', 'R1D_flex', 'L2D_flex', 'R2D_flex', 'L3D_flex', 'R3D_flex'
+]
 ```
 
 ### Interface Settings
@@ -327,7 +337,7 @@ Modify `constants.py` for:
 
 1. **Check log files** in the output directory for detailed error information
 2. **Verify file formats** match expected structure
-3. **Report bugs** with log files 
+3. **Report bugs** with log files
 
 ## 🔬 Technical Details
 
@@ -345,6 +355,7 @@ The system uses two main approaches for error detection:
    - Calculates segment lengths from 3D coordinates
    - Computes mean and standard deviation for each segment
    - Identifies frames with z-scores above threshold
+   - Analyzes configurable segment pairs (default: TiTa-TaG)
 
 ### Data Processing Pipeline
 
