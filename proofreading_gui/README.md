@@ -96,7 +96,7 @@ The Proofreading GUI is designed for researchers working with fly position data 
 3. Find the executable
    - Located in `dist/ProofreadingGUI.exe`
 
-## 📁 Expected File Structure
+## Expected File Structure
 
 The application can work with various folder structures and automatically detects different organizational patterns:
 
