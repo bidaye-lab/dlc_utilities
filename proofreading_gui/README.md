@@ -1,3 +1,7 @@
+
+<img src="PRUI_Icon.png" alt="Proofreading GUI logo" title="Proofreading GUI" align="right" height="60" />
+
+
 # Proofreading GUI
 
 A comprehensive GUI application built with Python's tkinter for proofreading and correcting DLC (DeepLabCut) assigned joint positions in fly behavior analysis. The application provides an interface for correcting tracking errors in pose estimation data. The application contains built-in error detection algorithms and video playback capabilities.
@@ -9,6 +13,7 @@ A comprehensive GUI application built with Python's tkinter for proofreading and
 - [Installation](#-installation)
 - [File Structure](#-expected-file-structure)
 - [Usage Guide](#-usage-guide)
+  - [Keyboard Shortcuts](#5-keyboard-shortcuts)
 - [Configuration](#-configuration)
 - [Troubleshooting](#-troubleshooting)
 - [Technical Details](#-technical-details)
@@ -47,7 +52,8 @@ The Proofreading GUI is designed specifically for researchers working with fly p
 ### Method 1: Standalone Executable (Recommended)
 
 1. **Download the latest release**
-   - Navigate to the [Releases](https://github.com/bidaye-lab/dlc_utilities/tree/proofreading_gui) page
+   - Navigate to the [Releases](https://github.com/bidaye-lab/dlc_utilities/releases/tag/v1.0.0-beta) page
+   - Scroll down and open the Assets dropdown (if not already open)
    - Download the latest `release.zip`
 
 2. **Install the Application**
@@ -215,6 +221,9 @@ The application creates output in two different locations:
 
 ### 2. Project Setup
 
+![Setup Page](setup_page.png)
+
+
 1. **Select Project Folder**
    - Click "Browse..." to select your input folder
    - Or drag and drop the folder onto the interface
@@ -229,6 +238,9 @@ The application creates output in two different locations:
    - Choose the trial folder (if multiple trials exist)
 
 ### 3. Error Detection and Correction
+
+![Home Page](home.png)
+
 
 1. **Run Error Detection**
    - Click "Run Correction" to start the error detection process
@@ -258,6 +270,23 @@ The application creates output in two different locations:
 - Select specific limbs for correction using checkboxes
 - "Select All" and "Select None" for bulk operations
 - Focus on problematic areas while ignoring others
+
+### 5. Keyboard Shortcuts
+
+| Shortcut | Action | Description |
+|----------|--------|-------------|
+| **A** | Previous Frame | Navigate to the previous frame |
+| **D** | Next Frame | Navigate to the next frame |
+| **Q** | Previous Error | Jump to the previous detected error |
+| **E** | Next Error | Jump to the next detected error |
+| **Space** | Play/Pause Error Range | Toggle error range playback |
+| **S** | Next Recommended Camera | Cycle to the next recommended camera for current error |
+| **C** | Clear Selected Point | Clear the currently selected point |
+
+#### Mouse Controls
+- **Left Click + Drag**: Move joint positions on video frames
+- **Left Click or Right Click on Point**: Select a point for editing
+- **Left Click on Empty Space**: Move selected point to new position
 
 ## 🔧 Configuration
 
