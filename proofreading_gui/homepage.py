@@ -5,6 +5,7 @@ import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+from matplotlib.patches import Circle
 import cv2
 import numpy as np
 import pandas as pd
@@ -68,6 +69,11 @@ class ProofreadingInterface:
         self.current_video_cap = None
         self.current_video_path = None
         self.last_frame_idx = None
+        
+        # Frame caching for faster navigation
+        self.frame_cache = {}  # {camera: {frame_num: frame_data}}
+        self.frame_cache_size = 10  # Number of frames to cache per camera
+        self.frame_cache_order = {}  # {camera: [frame_nums]} for LRU tracking
         
         self._build_interface()
         
@@ -1127,6 +1133,18 @@ class ProofreadingInterface:
         tk.Checkbutton(display_frame, text="Enable limb gradients", 
                       variable=self.limb_gradient_var, command=self.update_display).pack(anchor='w')
 
+        # Frame cache controls
+        cache_frame = ttk.Frame(display_frame)
+        cache_frame.pack(anchor='w', pady=(5, 0))
+        tk.Label(cache_frame, text="Frame cache size:").pack(side='left')
+        self.cache_size_var = tk.IntVar(value=self.frame_cache_size)
+        cache_slider = tk.Scale(cache_frame, from_=5, to=20, orient='horizontal', 
+                               variable=self.cache_size_var, showvalue=True, length=80,
+                               command=self._on_cache_size_change)
+        cache_slider.pack(side='left', padx=(5, 10))
+        tk.Button(cache_frame, text="Clear Cache", command=self._clear_all_caches,
+                 font=('', 8)).pack(side='left')
+
         # Auto-mark completion option
         self.auto_mark_completed_var = tk.BooleanVar(value=True)
         self.auto_mark_label = tk.StringVar()
@@ -1139,6 +1157,14 @@ class ProofreadingInterface:
         )
         self.auto_mark_checkbox.pack(anchor='w')
         self._set_auto_mark_checkbox_color()
+
+        # Auto-set target to error point option
+        self.auto_set_target_var = tk.BooleanVar(value=True)
+        tk.Checkbutton(
+            display_frame,
+            text="Auto-set target to error point",
+            variable=self.auto_set_target_var
+        ).pack(anchor='w')
 
         # Playback options
         cut_playback_frame = ttk.LabelFrame(control_panel, text="Playback Options", padding=5)
@@ -1233,11 +1259,31 @@ class ProofreadingInterface:
 Q/E: Previous/Next error
 S: Next recommended camera
 Space: Play/Pause error range
-Click error number to edit
-Drag points to correct pose"""
+C: Clear selected point
+Left-click on point: Select point
+Left-click on empty space: Move selected point
+Drag: Move point freely
+
+Frame caching: Navigate faster with
+cached frames (see cache controls)"""
         hotkeys_text.insert(1.0, hotkeys_info)
         hotkeys_text.config(state='disabled')
 
+        # Add target point controls
+        target_frame = ttk.LabelFrame(info_frame, text="Selected Point Controls", padding=5)
+        target_frame.pack(fill='x', pady=(5, 0))
+        
+        tk.Button(target_frame, text="Clear Selected", 
+                 command=self._clear_selected_point, font=('', 8)).pack(side='left', padx=(0, 5))
+        tk.Label(target_frame, text="Left-click to select/move", font=('', 8)).pack(side='left')
+        
+        # Selected point info
+        self.selected_point_text = tk.Text(target_frame, height=3, width=35, wrap='word', 
+                                          font=('Courier', 8))
+        self.selected_point_text.pack(fill='x', pady=(5, 0))
+        self.selected_point_text.insert(1.0, "No point selected")
+        self.selected_point_text.config(state='disabled')
+        
         # Progress bar for save feedback
         self.save_progress = ttk.Progressbar(info_frame, mode='determinate', length=200)
         self.save_progress.pack(fill='x', pady=(5, 0))
@@ -1265,7 +1311,10 @@ Drag points to correct pose"""
         self.master.bind('<Key>', self._on_key_press)
         
         # Point movement state
-        self.moving_point = {'active': False, 'index': None}
+        self.moving_point = {'active': False, 'index': None, 'start_x': None, 'start_y': None}
+        
+        # Selected point state
+        self.selected_point = {'active': False, 'x': None, 'y': None, 'label': None}
         
         # Load progress and jump to first incomplete error
         start_idx = 0
@@ -1372,12 +1421,25 @@ Drag points to correct pose"""
         
         # Calculate absolute frame number using user-configurable parameters
         trial_num = int(row['N'])
-        relative_start_frame = int(row['Start_Frame'])
+        relative_start = int(row['Start_Frame'])
         frame_length = int(self.frame_length.get())
         setup_time = int(self.setup_time.get())
-        absolute_frame = relative_start_frame + (trial_num - 1) * frame_length + setup_time
+        
+        # Calculate trial start frame: (setup_time + frame_length) * (trial_num - 1) + setup_time
+        trial_start = (setup_time + frame_length) * (trial_num - 1) + setup_time
+        # Add relative frame to get absolute frame
+        absolute_frame = trial_start + relative_start
+        
+        # Debug logging for frame calculation
+        logger.debug(f"Frame calc: trial={trial_num}, relative={relative_start}, setup={setup_time}, run={frame_length}")
+        logger.debug(f"Frame calc: trial_start={trial_start}, absolute={absolute_frame}")
+        
         self.frame_var.set(str(absolute_frame))
         self.update_display()
+        
+        # Auto-set target to error point if enabled
+        if hasattr(self, 'auto_set_target_var') and self.auto_set_target_var.get():
+            self._auto_set_target_to_error()
 
     def prev_frame(self):
         """Go to previous frame"""
@@ -1414,7 +1476,15 @@ Drag points to correct pose"""
         # Load and display video frame
         mp4_path = self.mp4_files.get(cam)
         img_rgb = None
-        if mp4_path and os.path.isfile(mp4_path):
+        
+        # Check frame cache first
+        cached_frame = self._get_cached_frame(cam, frame)
+        if cached_frame is not None:
+            img_rgb = cached_frame
+            logger.debug(f"Using cached frame {frame} for camera {cam}")
+            # Show cache status in main status bar
+            self.status.set(f"Frame {frame} loaded from cache")
+        elif mp4_path and os.path.isfile(mp4_path):
             try:
                 # Reuse VideoCapture if possible for performance
                 if (self.current_video_cap is None or
@@ -1424,6 +1494,8 @@ Drag points to correct pose"""
                     self.current_video_cap = cv2.VideoCapture(mp4_path)
                     self.current_video_path = mp4_path
                     self.last_frame_idx = None
+                    # Clear cache when switching videos
+                    self._clear_frame_cache(cam)
                     
                 cap = self.current_video_cap
                 # Use different seeking strategies for playback vs manual navigation
@@ -1439,10 +1511,11 @@ Drag points to correct pose"""
                 
                 if ret and img is not None:
                     img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-                    self.ax.imshow(img_rgb, aspect='auto', 
-                                  extent=(0, img_rgb.shape[1], img_rgb.shape[0], 0))
-                    self.ax.set_xlim(0, img_rgb.shape[1])
-                    self.ax.set_ylim(img_rgb.shape[0], 0)
+                    # Add frame to cache
+                    self._add_frame_to_cache(cam, frame, img_rgb)
+                    logger.debug(f"Loaded and cached frame {frame} for camera {cam}")
+                    # Show loading status
+                    self.status.set(f"Frame {frame} loaded from disk")
                 else:
                     self.ax.text(0.5, 0.5, f"Frame {frame} not available", 
                                ha='center', va='center', transform=self.ax.transAxes)
@@ -1458,6 +1531,13 @@ Drag points to correct pose"""
             self.ax.text(0.5, 0.5, "No video file available", 
                        ha='center', va='center', transform=self.ax.transAxes)
         
+        # Display the frame
+        if img_rgb is not None:
+            self.ax.imshow(img_rgb, aspect='auto', 
+                          extent=(0, img_rgb.shape[1], img_rgb.shape[0], 0))
+            self.ax.set_xlim(0, img_rgb.shape[1])
+            self.ax.set_ylim(img_rgb.shape[0], 0)
+        
         # Display pose data
         self._display_pose_data(cam, frame)
         
@@ -1465,6 +1545,13 @@ Drag points to correct pose"""
         if not hasattr(self, '_last_info_update') or self._last_info_update != (cam, frame):
             self._update_info_panels(cam, frame)
             self._last_info_update = (cam, frame)
+        
+        # Trigger preloading of nearby frames for faster navigation
+        if img_rgb is not None:
+            self._preload_nearby_frames(cam, frame)
+        
+        # Reset status to "Ready" after a short delay
+        self.master.after(1000, lambda: self.status.set("Ready"))
         
         self.canvas.draw()
 
@@ -1559,9 +1646,13 @@ Drag points to correct pose"""
         if pose_df is None or frame >= len(pose_df):
             return
         
-        # Adjust frame index for pose data to account for setup_time offset
+        # Use frame directly for pose data (no setup_time offset needed)
+        pose_frame = frame
+        
+        # Debug logging for frame synchronization
         setup_time = int(self.setup_time.get())
-        pose_frame = max(0, frame - setup_time)
+        if setup_time != 0:
+            logger.debug(f"Frame sync: video_frame={frame}, pose_frame={pose_frame}, setup_time={setup_time}")
         
         if pose_frame >= len(pose_df):
             return
@@ -1686,6 +1777,8 @@ Drag points to correct pose"""
                                          c=colors, s=sizes, picker=True, 
                                          edgecolors='black', linewidths=1, alpha=0.8)
             self.scatter_labels = labels
+        
+        # No visual overlays - just update the selected point controls
 
     def _update_info_panels(self, cam, frame):
         """Update information panels"""
@@ -1714,6 +1807,10 @@ Drag points to correct pose"""
         file_info = f"Camera: {cam}\n"
         file_info += f"Frame: {frame}/{total_frames-1 if total_frames > 0 else 0}\n"
         file_info += f"Video: {os.path.basename(mp4_path) if mp4_path != 'Not found' else 'Not found'}"
+        
+        # Add cache status
+        cached_frames = len(self.frame_cache.get(cam, {}))
+        file_info += f"\nCache: {cached_frames}/{self.frame_cache_size} frames"
         
         self.file_info_text.insert(1.0, file_info)
         
@@ -1779,7 +1876,7 @@ Drag points to correct pose"""
             self._drag_point(event.xdata, event.ydata)
 
     def on_mouse_press(self, event):
-        """Handle mouse press for point selection"""
+        """Handle mouse press for point selection and moving selected point"""
         if (self.edit_mode_var.get() and self.scatter is not None and 
             hasattr(self.scatter, 'contains') and event.inaxes == self.ax):
             
@@ -1788,6 +1885,62 @@ Drag points to correct pose"""
                 i = int(ind['ind'][0])
                 self.moving_point['active'] = True
                 self.moving_point['index'] = i
+                
+                # Store starting position for drag detection
+                offsets = self.scatter.get_offsets()
+                if not isinstance(offsets, np.ndarray):
+                    offsets = np.array(offsets)
+                self.moving_point['start_x'] = float(offsets[i][0])
+                self.moving_point['start_y'] = float(offsets[i][1])
+                
+                # Select the point
+                if i < len(self.scatter_labels):
+                    label = self.scatter_labels[i]
+                    x, y = self.moving_point['start_x'], self.moving_point['start_y']
+                    
+                    self.selected_point['active'] = True
+                    self.selected_point['x'] = x
+                    self.selected_point['y'] = y
+                    self.selected_point['label'] = label
+                    
+                    self.selected_point_text.config(state='normal')
+                    self.selected_point_text.delete(1.0, 'end')
+                    self.selected_point_text.insert(1.0, f"Selected: {label}\nPosition: ({x:.1f}, {y:.1f})")
+                    self.selected_point_text.config(state='disabled')
+                    
+                    self.status.set(f"Selected {label}")
+            else:
+                # Clicked on empty space - move selected point if one is selected
+                if self.selected_point['active'] and event.xdata is not None and event.ydata is not None:
+                    # Move selected point in the pose dataframe
+                    cam = self.camera_var.get()
+                    frame = int(self.frame_var.get())
+                    label = self.selected_point['label']
+                    h5_path = self.last_csv_path.get(cam)
+                    pose_df = self.pose_cache.get(cam)
+                    if h5_path and pose_df is not None and label in pose_df.columns.levels[1]:
+                        scorer = pose_df.columns.levels[0][0]
+                        if (scorer, label, 'x') in pose_df.columns:
+                            pose_df.at[frame, (scorer, label, 'x')] = event.xdata
+                        if (scorer, label, 'y') in pose_df.columns:
+                            pose_df.at[frame, (scorer, label, 'y')] = event.ydata
+                        self._pending_pose_edits.add(cam)
+                        self.status.set(f"Moved {label} to ({event.xdata:.1f}, {event.ydata:.1f})")
+                        self.selected_point['x'] = event.xdata
+                        self.selected_point['y'] = event.ydata
+                        self.selected_point_text.config(state='normal')
+                        self.selected_point_text.delete(1.0, 'end')
+                        self.selected_point_text.insert(1.0, f"Selected: {label}\nPosition: ({event.xdata:.1f}, {event.ydata:.1f})")
+                        self.selected_point_text.config(state='disabled')
+                        self.update_display()
+                    else:
+                        self.status.set("Could not move selected point: data not found")
+                else:
+                    # No point selected, clear selection
+                    self.selected_point_text.config(state='normal')
+                    self.selected_point_text.delete(1.0, 'end')
+                    self.selected_point_text.insert(1.0, "No point selected")
+                    self.selected_point_text.config(state='disabled')
 
     def on_mouse_drag(self, event):
         """Handle mouse dragging - processed in on_mouse_motion for smoother interaction"""
@@ -1798,10 +1951,34 @@ Drag points to correct pose"""
         if (self.edit_mode_var.get() and self.moving_point['active'] and 
             event.xdata is not None and event.ydata is not None):
             
-            self._save_point_edit(event.xdata, event.ydata)
+            # Check if this was a click (no drag) by comparing to starting position
+            start_x = self.moving_point.get('start_x')
+            start_y = self.moving_point.get('start_y')
+            drag_threshold = 5  # pixels
+            
+            if (start_x is not None and start_y is not None and
+                abs(event.xdata - start_x) < drag_threshold and 
+                abs(event.ydata - start_y) < drag_threshold):
+                # This was a click without drag - point was already selected in on_mouse_press
+                pass  # Selection already handled in on_mouse_press
+            else:
+                # This was a drag
+                self._save_point_edit(event.xdata, event.ydata)
+                
+                # Update selected point display after drag
+                if self.moving_point['index'] is not None and self.moving_point['index'] < len(self.scatter_labels):
+                    label = self.scatter_labels[self.moving_point['index']]
+                    self.selected_point['x'] = event.xdata
+                    self.selected_point['y'] = event.ydata
+                    self.selected_point_text.config(state='normal')
+                    self.selected_point_text.delete(1.0, 'end')
+                    self.selected_point_text.insert(1.0, f"Selected: {label}\nPosition: ({event.xdata:.1f}, {event.ydata:.1f})")
+                    self.selected_point_text.config(state='disabled')
         
         self.moving_point['active'] = False
         self.moving_point['index'] = None
+        self.moving_point['start_x'] = None
+        self.moving_point['start_y'] = None
 
     def _drag_point(self, x, y):
         """Update point position during drag"""
@@ -1839,9 +2016,13 @@ Drag points to correct pose"""
             if not h5_path or pose_df is None:
                 return
             
-            # Adjust frame index for pose data to account for setup_time offset
+            # Use frame directly for pose data (no setup_time offset needed)
+            pose_frame = frame
+            
+            # Debug logging for frame synchronization
             setup_time = int(self.setup_time.get())
-            pose_frame = max(0, frame - setup_time)
+            if setup_time != 0:
+                logger.debug(f"Save sync: video_frame={frame}, pose_frame={pose_frame}, setup_time={setup_time}")
             
             if pose_frame >= len(pose_df):
                 return
@@ -1929,6 +2110,9 @@ Drag points to correct pose"""
     def _on_camera_change(self, *args):
         """Handle camera selection change"""
         self._save_pending_pose_edits()
+        # Clear frame cache when switching cameras
+        cam = self.camera_var.get()
+        self._clear_frame_cache(cam)
         self.update_display()
 
     def _on_close(self):
@@ -1967,6 +2151,101 @@ Drag points to correct pose"""
             logger.error(f"Failed to save log file: {e}")
         self.master.destroy()
 
+    def _get_cached_frame(self, cam, frame_num):
+        """Get frame from cache if available"""
+        if cam in self.frame_cache and frame_num in self.frame_cache[cam]:
+            # Update LRU order
+            if cam in self.frame_cache_order:
+                if frame_num in self.frame_cache_order[cam]:
+                    self.frame_cache_order[cam].remove(frame_num)
+                self.frame_cache_order[cam].append(frame_num)
+            return self.frame_cache[cam][frame_num]
+        return None
+
+    def _add_frame_to_cache(self, cam, frame_num, frame_data):
+        """Add frame to cache with LRU management"""
+        if cam not in self.frame_cache:
+            self.frame_cache[cam] = {}
+            self.frame_cache_order[cam] = []
+        
+        # If frame already exists, just update LRU order
+        if frame_num in self.frame_cache[cam]:
+            if frame_num in self.frame_cache_order[cam]:
+                self.frame_cache_order[cam].remove(frame_num)
+            self.frame_cache_order[cam].append(frame_num)
+            return
+        
+        # Add new frame
+        self.frame_cache[cam][frame_num] = frame_data
+        self.frame_cache_order[cam].append(frame_num)
+        
+        # Remove oldest frame if cache is full
+        if len(self.frame_cache[cam]) > self.frame_cache_size:
+            oldest_frame = self.frame_cache_order[cam].pop(0)
+            del self.frame_cache[cam][oldest_frame]
+
+    def _clear_frame_cache(self, cam=None):
+        """Clear frame cache for specific camera or all cameras"""
+        if cam is None:
+            self.frame_cache.clear()
+            self.frame_cache_order.clear()
+        else:
+            if cam in self.frame_cache:
+                del self.frame_cache[cam]
+            if cam in self.frame_cache_order:
+                del self.frame_cache_order[cam]
+
+    def _preload_nearby_frames(self, cam, current_frame):
+        """Preload nearby frames in the background for faster navigation"""
+        if not hasattr(self, '_preload_after_id'):
+            self._preload_after_id = None
+        
+        # Cancel any pending preload
+        if self._preload_after_id:
+            self.master.after_cancel(self._preload_after_id)
+        
+        # Schedule preload after a short delay to avoid blocking UI
+        self._preload_after_id = self.master.after(100, lambda: self._do_preload_frames(cam, current_frame))
+
+    def _do_preload_frames(self, cam, current_frame):
+        """Actually perform the frame preloading"""
+        mp4_path = self.mp4_files.get(cam)
+        if not mp4_path or not os.path.isfile(mp4_path):
+            return
+        
+        try:
+            # Create a separate VideoCapture for preloading to avoid interfering with main playback
+            preload_cap = cv2.VideoCapture(mp4_path)
+            if not preload_cap.isOpened():
+                return
+            
+            # Preload frames around current position
+            frames_to_preload = []
+            for offset in [-3, -2, -1, 1, 2, 3]:  # Preload 3 frames before and after
+                target_frame = current_frame + offset
+                if target_frame >= 0 and target_frame not in self.frame_cache.get(cam, {}):
+                    frames_to_preload.append(target_frame)
+            
+            # Load frames in batches to avoid blocking
+            for i, frame_num in enumerate(frames_to_preload[:3]):  # Limit to 3 frames per preload cycle
+                preload_cap.set(cv2.CAP_PROP_POS_FRAMES, frame_num)
+                ret, img = preload_cap.read()
+                if ret and img is not None:
+                    img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+                    self._add_frame_to_cache(cam, frame_num, img_rgb)
+                    logger.debug(f"Preloaded frame {frame_num} for camera {cam}")
+                
+                # Small delay to prevent blocking
+                if i < len(frames_to_preload[:3]) - 1:
+                    self.master.after(10)
+            
+            preload_cap.release()
+            
+        except Exception as e:
+            logger.debug(f"Error during frame preloading: {e}")
+            if 'preload_cap' in locals():
+                preload_cap.release()
+
     def play_error_range(self):
         """Play video from N frames before error start to N after error end"""
         if self.error_df.empty or self._playing_error:
@@ -1982,9 +2261,17 @@ Drag points to correct pose"""
             relative_end = int(row['End_Frame'])
             frame_length = int(self.frame_length.get())
             setup_time = int(self.setup_time.get())
-            absolute_start = relative_start + (trial_num - 1) * frame_length + setup_time
-            absolute_end = relative_end + (trial_num - 1) * frame_length + setup_time
-            trial_first_frame = (trial_num - 1) * frame_length + setup_time
+            
+            # Calculate trial start frame: (setup_time + frame_length) * (trial_num - 1) + setup_time
+            trial_start = (setup_time + frame_length) * (trial_num - 1) + setup_time
+            # Add relative frames to get absolute frames
+            absolute_start = trial_start + relative_start
+            absolute_end = trial_start + relative_end
+            trial_first_frame = trial_start
+            
+            # Debug logging for playback frame calculation
+            logger.debug(f"Playback calc: trial={trial_num}, relative_start={relative_start}, relative_end={relative_end}")
+            logger.debug(f"Playback calc: trial_start={trial_start}, absolute_start={absolute_start}, absolute_end={absolute_end}")
         except Exception:
             return
             
@@ -2137,6 +2424,8 @@ Drag points to correct pose"""
                 self.toggle_pause_error()
             else:
                 self.play_error_range()
+        elif event.char == 'c':
+            self._clear_selected_point()
 
     def next_recommended_camera(self):
         """Cycle to the next recommended camera for the current error"""
@@ -2193,6 +2482,73 @@ Drag points to correct pose"""
             self.exclusion_status.set(f"Excluded limbs: {', '.join(excluded_limbs)}")
         else:
             self.exclusion_status.set("No limbs excluded")
+
+    def _on_cache_size_change(self, *args):
+        """Handle change in frame cache size"""
+        self.frame_cache_size = self.cache_size_var.get()
+        self._clear_all_caches()
+        self.update_display()
+
+    def _clear_all_caches(self):
+        """Clear frame cache for all cameras"""
+        self._clear_frame_cache()  # This clears all caches when cam=None
+
+    def _clear_selected_point(self):
+        """Clear the selected point"""
+        self.selected_point = {'active': False, 'x': None, 'y': None, 'label': None}
+        self.selected_point_text.delete(1.0, 'end')
+        self.selected_point_text.insert(1.0, "No point selected")
+        self.selected_point_text.config(state='disabled')
+        
+        # Also clear selected point display
+        self.selected_point_text.config(state='normal')
+        self.selected_point_text.delete(1.0, 'end')
+        self.selected_point_text.insert(1.0, "No point selected")
+        self.selected_point_text.config(state='disabled')
+        
+        self.status.set("Selected point cleared")
+        self.update_display()  # Redraw to remove selected point visualization
+
+    def _update_target_info(self):
+        """Update the selected point information"""
+        if self.selected_point['active'] and self.selected_point['x'] is not None and self.selected_point['y'] is not None:
+            self.selected_point_text.config(state='normal')
+            self.selected_point_text.delete(1.0, 'end')
+            self.selected_point_text.insert(1.0, f"Selected: {self.selected_point['label']}\n"
+                                                f"Position: ({self.selected_point['x']:.1f}, {self.selected_point['y']:.1f})")
+            self.selected_point_text.config(state='disabled')
+
+    def _auto_set_target_to_error(self):
+        """Auto-set target to error point"""
+        if self.error_df.empty:
+            return
+        
+        idx = self.current_error_index[0]
+        row = self.error_df.iloc[idx]
+        outlier_name = str(row['Outlier_Name']).split(':')[0].split()[0]
+        main_bodypart = naming_conversions.get(outlier_name, outlier_name)
+        
+        # Wait for display to update, then set target
+        self.master.after(100, lambda: self._set_target_to_bodypart(main_bodypart))
+    
+    def _set_target_to_bodypart(self, bodypart):
+        """Set target to a specific bodypart if it exists in current display"""
+        if self.scatter is not None and self.scatter_labels:
+            for i, label in enumerate(self.scatter_labels):
+                if label == bodypart:
+                    offsets = self.scatter.get_offsets()
+                    if not isinstance(offsets, np.ndarray):
+                        offsets = np.array(offsets)
+                    x, y = float(offsets[i][0]), float(offsets[i][1])
+                    
+                    self.selected_point['active'] = True
+                    self.selected_point['x'] = x
+                    self.selected_point['y'] = y
+                    self.selected_point['label'] = label
+                    self.status.set(f"Auto-target set to {label} at ({x:.1f}, {y:.1f})")
+                    self._update_target_info()
+                    self.update_display()
+                    return
 
 def main():
     """Main application entry point"""
