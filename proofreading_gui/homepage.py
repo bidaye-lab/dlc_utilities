@@ -323,7 +323,6 @@ class ProofreadingInterface:
             if col >= max_cols:
                 col = 0
                 row += 1
-        tk.Button(delete_type_group, text="Delete Selected Points", command=self._delete_points_of_type).pack(pady=(10, 0))
         
         # File Status Section
         status_group = ttk.LabelFrame(main_frame, text="File Status", padding=15)
@@ -1350,9 +1349,8 @@ cached frames (see cache controls)"""
         self.point_select_dropdown = ttk.Combobox(target_frame, textvariable=self.point_select_var, state='readonly', width=18)
         self.point_select_dropdown.pack(side='left', padx=(0, 5))
         self.point_select_dropdown['values'] = self.scatter_labels if hasattr(self, 'scatter_labels') else []
-        
-        tk.Button(target_frame, text="Select Point", command=self._select_point_from_dropdown, font=('', 8)).pack(side='left', padx=(0, 5))
-        tk.Button(target_frame, text="Delete Point", command=self._delete_selected_point, font=('', 8)).pack(side='left', padx=(0, 5))
+        self.point_select_var.trace_add('write', self._on_point_select_var_change)
+        # Removed the Select Point button
         tk.Label(target_frame, text="Left-click to select/move", font=('', 8)).pack(side='left')
         
         # Selected point info
@@ -1389,7 +1387,7 @@ cached frames (see cache controls)"""
         self.master.bind('<Key>', self._on_key_press)
         self.master.bind('<BackSpace>', lambda event: self._delete_selected_point())
         self.master.bind('<Delete>', lambda event: self._delete_selected_point())
-        
+
         # Point movement state
         self.moving_point = {'active': False, 'index': None, 'start_x': None, 'start_y': None}
         
@@ -1428,6 +1426,10 @@ cached frames (see cache controls)"""
             self.goto_error_index(start_idx)
         else:
             self.update_display()
+
+        # Undo/redo stacks
+        # self.undo_stack = []
+        # self.redo_stack = []
 
     def goto_error(self, direction):
         """Navigate to previous/next error"""
@@ -1683,7 +1685,7 @@ cached frames (see cache controls)"""
                         anipose_dir = os.path.join(n_folder_path, trial_folder)
                     else:
                         anipose_dir = n_folder_path
-                        
+            
             if anipose_dir is None:
                 logger.error(f"Could not find anipose directory for N{fly_num}")
                 self._pose_dir_cache[cache_key] = None
@@ -1825,7 +1827,7 @@ cached frames (see cache controls)"""
             y = row[(scorer, bodypart, 'y')]
             likelihood = row[(scorer, bodypart, 'likelihood')]
             if not (np.isfinite(x) and np.isfinite(y) and likelihood > 0):
-                print(f"Skipping {bodypart} because it has no coordinates or likelihood > 0")
+                # print(f"Skipping {bodypart} because it has no coordinates or likelihood > 0")
                 continue
             label = bodypart
             points.append((x, y))
@@ -1871,8 +1873,11 @@ cached frames (see cache controls)"""
         # Update dropdown values to all possible bodyparts
         if hasattr(self, 'point_select_dropdown'):
             self.point_select_dropdown['values'] = self.all_bodyparts
-            if self.all_bodyparts:
-                self.point_select_var.set(self.all_bodyparts[0])
+            # Do not auto-select the first element; only update if the selected point is not in the list
+            if hasattr(self, 'selected_point') and self.selected_point.get('label') in self.all_bodyparts:
+                self.point_select_var.set(self.selected_point['label'])
+            elif not self.selected_point.get('label'):
+                self.point_select_var.set("")
         
         # No visual overlays - just update the selected point controls
 
@@ -2839,6 +2844,44 @@ cached frames (see cache controls)"""
         if cam:
             self._pending_pose_edits.add(cam)
         self.status.set(f"Deleted points: {', '.join(types)} at frame {frame}")
+        self.update_display()
+
+    def _on_point_select_var_change(self, *args):
+        """Update and place the selected point when the combobox value changes."""
+        label = self.point_select_var.get()
+        if not label:
+            self.selected_point = {'active': False, 'x': None, 'y': None, 'label': None}
+            self.selected_point_text.config(state='normal')
+            self.selected_point_text.delete(1.0, 'end')
+            self.selected_point_text.insert(1.0, "No point selected")
+            self.selected_point_text.config(state='disabled')
+            return
+        cam = self.camera_var.get()
+        try:
+            frame = int(self.frame_var.get())
+        except ValueError:
+            return
+        h5_path = self.last_csv_path.get(cam)
+        pose_df = self.pose_cache.get(cam)
+        if not h5_path or pose_df is None:
+            return
+        scorer = pose_df.columns.levels[0][0]
+        x, y = None, None
+        if (scorer, label, 'x') in pose_df.columns and (scorer, label, 'y') in pose_df.columns:
+            x = pose_df.at[frame, (scorer, label, 'x')]
+            y = pose_df.at[frame, (scorer, label, 'y')]
+        # If not finite, place at (0,0) and set likelihood=1
+        if x is None or y is None or not (np.isfinite(x) and np.isfinite(y)):
+            x, y = 0.0, 0.0
+        if (scorer, label, 'x') in pose_df.columns:
+            pose_df.at[frame, (scorer, label, 'x')] = x
+        if (scorer, label, 'y') in pose_df.columns:
+            pose_df.at[frame, (scorer, label, 'y')] = y
+        if (scorer, label, 'likelihood') in pose_df.columns:
+            pose_df.at[frame, (scorer, label, 'likelihood')] = 1.0
+        self.selected_point = {'active': True, 'x': x, 'y': y, 'label': label}
+        self._pending_pose_edits.add(cam)
+        self._update_target_info()
         self.update_display()
 
 def main():
