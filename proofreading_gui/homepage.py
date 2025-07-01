@@ -260,58 +260,70 @@ class ProofreadingInterface:
         genotype_label.grid(row=3, column=1, sticky='w', pady=(5, 0))
         
         # Limb Exclusion Section
-        exclusion_group = ttk.LabelFrame(main_frame, text="Exclude Limbs from Correction", padding=15)
+        exclusion_group = ttk.LabelFrame(main_frame, text="Exclude Limbs/Segments from Correction", padding=15)
         exclusion_group.pack(fill='x', expand=True, pady=(0, 15))
-        
-        # Define limb groupings for UI
-        self.limb_defs_ui = {
-            'Right Front Leg': ['R-F-ThC', 'R-F-CTr', 'R-F-FTi', 'R-F-TiTa', 'R-F-TaG'],
-            'Right Mid Leg': ['R-M-ThC', 'R-M-CTr', 'R-M-FTi', 'R-M-TiTa', 'R-M-TaG'],
-            'Right Hind Leg': ['R-H-ThC', 'R-H-CTr', 'R-H-FTi', 'R-H-TiTa', 'R-H-TaG'],
-            'Left Front Leg': ['L-F-ThC', 'L-F-CTr', 'L-F-FTi', 'L-F-TiTa', 'L-F-TaG'],
-            'Left Mid Leg': ['L-M-ThC', 'L-M-CTr', 'L-M-FTi', 'L-M-TiTa', 'L-M-TaG'],
-            'Left Hind Leg': ['L-H-ThC', 'L-H-CTr', 'L-H-FTi', 'L-H-TiTa', 'L-H-TaG'],
-            'Wings': ['L-WH', 'R-WH'],
-            'Antennae': ['L-antenna', 'R-antenna'],
-            'Notum': ['Notum'],
-        }
-        
-        # Create exclusion checkboxes
-        self.excluded_limbs = {}
+        tk.Label(exclusion_group, text="Select segments to exclude from correction:").pack(anchor='w')
+        # Sub-frame for checkboxes using grid
+        exclusion_checkbox_frame = ttk.Frame(exclusion_group)
+        exclusion_checkbox_frame.pack(fill='x')
+        self.limb_segments_ui = [
+            'R-F-ThC', 'R-F-CTr', 'R-F-FTi', 'R-F-TiTa', 'R-F-TaG',
+            'R-M-ThC', 'R-M-CTr', 'R-M-FTi', 'R-M-TiTa', 'R-M-TaG',
+            'R-H-ThC', 'R-H-CTr', 'R-H-FTi', 'R-H-TiTa', 'R-H-TaG',
+            'L-F-ThC', 'L-F-CTr', 'L-F-FTi', 'L-F-TiTa', 'L-F-TaG',
+            'L-M-ThC', 'L-M-CTr', 'L-M-FTi', 'L-M-TiTa', 'L-M-TaG',
+            'L-H-ThC', 'L-H-CTr', 'L-H-FTi', 'L-H-TiTa', 'L-H-TaG',
+            'L-WH', 'R-WH', 'L-antenna', 'R-antenna', 'Notum'
+        ]
+        self.excluded_segments = {}
         row = 0
         col = 0
-        max_cols = 3
-        
-        for limb_name, parts in self.limb_defs_ui.items():
+        max_cols = 5
+        for seg in self.limb_segments_ui:
             var = tk.BooleanVar(value=False)
-            self.excluded_limbs[limb_name] = var
-            
-            cb = tk.Checkbutton(exclusion_group, text=limb_name, variable=var)
-            cb.grid(row=row, column=col, sticky='w', padx=(0, 20), pady=2)
-            
+            self.excluded_segments[seg] = var
+            cb = tk.Checkbutton(exclusion_checkbox_frame, text=seg, variable=var)
+            cb.grid(row=row, column=col, sticky='w', padx=(0, 10), pady=2)
             col += 1
             if col >= max_cols:
                 col = 0
                 row += 1
-        
         # Select all/none buttons
         button_frame = ttk.Frame(exclusion_group)
-        button_frame.grid(row=row+1, column=0, columnspan=max_cols, pady=(10, 0))
-        
+        button_frame.pack(pady=(10, 0))
         tk.Button(button_frame, text="Select All", 
-                 command=self._select_all_limbs).pack(side='left', padx=(0, 10))
+                 command=lambda: [v.set(True) for v in self.excluded_segments.values()]).pack(side='left', padx=(0, 10))
         tk.Button(button_frame, text="Select None", 
-                 command=self._select_none_limbs).pack(side='left')
-        
-        # Status label for excluded limbs
-        self.exclusion_status = tk.StringVar(value="No limbs excluded")
+                 command=lambda: [v.set(False) for v in self.excluded_segments.values()]).pack(side='left')
+        # Status label for excluded segments
+        self.exclusion_status = tk.StringVar(value="No segments excluded")
         status_label = tk.Label(exclusion_group, textvariable=self.exclusion_status, 
                                font=('', 9), fg='darkgreen')
-        status_label.grid(row=row+2, column=0, columnspan=max_cols, pady=(5, 0))
-        
-        # Bind checkboxes to update status
-        for var in self.excluded_limbs.values():
-            var.trace_add('write', self._update_exclusion_status)
+        status_label.pack(pady=(5, 0))
+        for var in self.excluded_segments.values():
+            var.trace_add('write', self._update_exclusion_status_segments)
+
+        # Delete All Points of Type Section (moved under exclusion_group)
+        delete_type_group = ttk.LabelFrame(main_frame, text="Delete All Points of Type", padding=15)
+        delete_type_group.pack(fill='x', expand=True, pady=(0, 15), after=exclusion_group)
+        tk.Label(delete_type_group, text="Select point types to delete for the current frame:").pack(anchor='w')
+        # Sub-frame for checkboxes using grid
+        delete_type_checkbox_frame = ttk.Frame(delete_type_group)
+        delete_type_checkbox_frame.pack(fill='x')
+        self.delete_type_vars = {}
+        row = 0
+        col = 0
+        max_cols = 5
+        for seg in self.limb_segments_ui:
+            var = tk.BooleanVar(value=False)
+            self.delete_type_vars[seg] = var
+            cb = tk.Checkbutton(delete_type_checkbox_frame, text=seg, variable=var)
+            cb.grid(row=row, column=col, sticky='w', padx=(0, 10), pady=2)
+            col += 1
+            if col >= max_cols:
+                col = 0
+                row += 1
+        tk.Button(delete_type_group, text="Delete Selected Points", command=self._delete_points_of_type).pack(pady=(10, 0))
         
         # File Status Section
         status_group = ttk.LabelFrame(main_frame, text="File Status", padding=15)
@@ -748,9 +760,9 @@ class ProofreadingInterface:
                 
                 # Get excluded parts based on selected limbs
                 excluded_parts = set()
-                for limb_name, var in self.excluded_limbs.items():
+                for limb_name, var in self.excluded_segments.items():
                     if var.get():
-                        excluded_parts.update(self.limb_defs_ui[limb_name])
+                        excluded_parts.add(limb_name)
                 
                 # Filter out errors for excluded parts
                 if excluded_parts:
@@ -774,7 +786,7 @@ class ProofreadingInterface:
                     # Save the filtered dataframe
                     error_df.to_csv(bunched_errors_file, index=False)
                     
-                    logger.info(f"Filtered out {original_count - filtered_count} errors for excluded limbs: {excluded_parts}")
+                    logger.info(f"Filtered out {original_count - filtered_count} errors for excluded segments: {excluded_parts}")
             
             self.status.set(f"Processing complete! Output saved to: {output_dir}")
             
@@ -1333,8 +1345,14 @@ cached frames (see cache controls)"""
         target_frame = ttk.LabelFrame(info_frame, text="Selected Point Controls", padding=5)
         target_frame.pack(fill='x', pady=(5, 0))
         
-        tk.Button(target_frame, text="Clear Selected", 
-                 command=self._clear_selected_point, font=('', 8)).pack(side='left', padx=(0, 5))
+        # Dropdown for selecting a point
+        self.point_select_var = tk.StringVar()
+        self.point_select_dropdown = ttk.Combobox(target_frame, textvariable=self.point_select_var, state='readonly', width=18)
+        self.point_select_dropdown.pack(side='left', padx=(0, 5))
+        self.point_select_dropdown['values'] = self.scatter_labels if hasattr(self, 'scatter_labels') else []
+        
+        tk.Button(target_frame, text="Select Point", command=self._select_point_from_dropdown, font=('', 8)).pack(side='left', padx=(0, 5))
+        tk.Button(target_frame, text="Delete Point", command=self._delete_selected_point, font=('', 8)).pack(side='left', padx=(0, 5))
         tk.Label(target_frame, text="Left-click to select/move", font=('', 8)).pack(side='left')
         
         # Selected point info
@@ -1369,6 +1387,8 @@ cached frames (see cache controls)"""
         
         # Keyboard event handlers
         self.master.bind('<Key>', self._on_key_press)
+        self.master.bind('<BackSpace>', lambda event: self._delete_selected_point())
+        self.master.bind('<Delete>', lambda event: self._delete_selected_point())
         
         # Point movement state
         self.moving_point = {'active': False, 'index': None, 'start_x': None, 'start_y': None}
@@ -1781,44 +1801,41 @@ cached frames (see cache controls)"""
             if '-' in main_bodypart:
                 leg_prefix = '-'.join(main_bodypart.split('-')[:2]) + '-'
         
-        # Process each bodypart in the pose data
-        for bodypart in pose_df.columns.levels[1]:  # Bodyparts are at level 1
+        # Get all possible bodyparts for the camera
+        all_bodyparts = list(pose_df.columns.levels[1])
+        self.all_bodyparts = all_bodyparts
+        
+        # Only plot points with likelihood > 0
+        for bodypart in all_bodyparts:
             # Check if all required coordinates exist
             has_all_coords = True
             for coord in ['x', 'y', 'likelihood']:
                 found_coord = False
-                for scorer in pose_df.columns.levels[0]:  # Scorers at level 0
+                for scorer in pose_df.columns.levels[0]:
                     if (scorer, bodypart, coord) in pose_df.columns:
                         found_coord = True
                         break
                 if not found_coord:
                     has_all_coords = False
                     break
-            
             if not has_all_coords:
                 continue
-            
-            # Get data from first available scorer
             scorer = pose_df.columns.levels[0][0]
             x = row[(scorer, bodypart, 'x')]
             y = row[(scorer, bodypart, 'y')]
             likelihood = row[(scorer, bodypart, 'likelihood')]
-            
-            # Skip low-confidence points
-            if not (np.isfinite(x) and np.isfinite(y) and likelihood > 0.1):
+            if not (np.isfinite(x) and np.isfinite(y) and likelihood > 0):
+                print(f"Skipping {bodypart} because it has no coordinates or likelihood > 0")
                 continue
-            
             label = bodypart
             points.append((x, y))
             labels.append(label)
-            
             # Determine limb prefix for coloring
             limb_prefix = None
             for prefix in self._limb_defs:
                 if label.startswith(prefix):
                     limb_prefix = prefix
                     break
-            
             # Apply gradient coloring if enabled
             if self.limb_gradient_var.get() and limb_prefix in self._leg_gradients and limb_prefix in self._limb_defs:
                 part_list = self._limb_defs[limb_prefix]
@@ -1830,7 +1847,6 @@ cached frames (see cache controls)"""
                     color = self._limb_colors.get(limb_prefix or label, 'red')
             else:
                 color = self._limb_colors.get(limb_prefix or label, 'red')
-            
             # Size points based on relevance to current error
             scale = self.point_radius_scale.get() if hasattr(self, 'point_radius_scale') else 1.0
             if main_bodypart and label == main_bodypart:
@@ -1842,7 +1858,6 @@ cached frames (see cache controls)"""
             else:
                 colors.append(color)
                 sizes.append(40 * scale)
-        
         # Display the points
         if points:
             points = np.array(points)
@@ -1850,6 +1865,14 @@ cached frames (see cache controls)"""
                                          c=colors, s=sizes, picker=True, 
                                          edgecolors='black', linewidths=1, alpha=0.8)
             self.scatter_labels = labels
+        else:
+            self.scatter = None
+            self.scatter_labels = []
+        # Update dropdown values to all possible bodyparts
+        if hasattr(self, 'point_select_dropdown'):
+            self.point_select_dropdown['values'] = self.all_bodyparts
+            if self.all_bodyparts:
+                self.point_select_var.set(self.all_bodyparts[0])
         
         # No visual overlays - just update the selected point controls
 
@@ -1959,28 +1982,24 @@ cached frames (see cache controls)"""
                 self.moving_point['active'] = True
                 self.moving_point['index'] = i
                 
-                # Store starting position for drag detection
                 offsets = self.scatter.get_offsets()
                 if not isinstance(offsets, np.ndarray):
                     offsets = np.array(offsets)
                 self.moving_point['start_x'] = float(offsets[i][0])
                 self.moving_point['start_y'] = float(offsets[i][1])
                 
-                # Select the point
                 if i < len(self.scatter_labels):
                     label = self.scatter_labels[i]
                     x, y = self.moving_point['start_x'], self.moving_point['start_y']
-                    
                     self.selected_point['active'] = True
                     self.selected_point['x'] = x
                     self.selected_point['y'] = y
                     self.selected_point['label'] = label
-                    
+                    self.point_select_var.set(label)  # Sync dropdown with selected point
                     self.selected_point_text.config(state='normal')
                     self.selected_point_text.delete(1.0, 'end')
                     self.selected_point_text.insert(1.0, f"Selected: {label}\nPosition: ({x:.1f}, {y:.1f})")
                     self.selected_point_text.config(state='disabled')
-                    
                     self.status.set(f"Selected {label}")
             else:
                 # Clicked on empty space - move selected point if one is selected
@@ -1997,6 +2016,8 @@ cached frames (see cache controls)"""
                             pose_df.at[frame, (scorer, label, 'x')] = event.xdata
                         if (scorer, label, 'y') in pose_df.columns:
                             pose_df.at[frame, (scorer, label, 'y')] = event.ydata
+                        if (scorer, label, 'likelihood') in pose_df.columns:
+                            pose_df.at[frame, (scorer, label, 'likelihood')] = 1.0
                         self._pending_pose_edits.add(cam)
                         self.status.set(f"Moved {label} to ({event.xdata:.1f}, {event.ydata:.1f})")
                         self.selected_point['x'] = event.xdata
@@ -2106,7 +2127,8 @@ cached frames (see cache controls)"""
                 pose_df.at[pose_frame, (scorer, label, 'x')] = x
             if (scorer, label, 'y') in pose_df.columns:
                 pose_df.at[pose_frame, (scorer, label, 'y')] = y
-            
+            if (scorer, label, 'likelihood') in pose_df.columns:
+                pose_df.at[pose_frame, (scorer, label, 'likelihood')] = 1.0
             self._pending_pose_edits.add(cam)
             logger.info(f"Updated {label} position at frame {frame} (pose frame {pose_frame}) for camera {cam}")
             self.status.set(f"Updated {label} position at frame {frame} (not yet saved)")
@@ -2602,21 +2624,21 @@ cached frames (see cache controls)"""
 
     def _select_all_limbs(self):
         """Select all limbs for exclusion"""
-        for var in self.excluded_limbs.values():
+        for var in self.excluded_segments.values():
             var.set(True)
 
     def _select_none_limbs(self):
         """Select no limbs for exclusion"""
-        for var in self.excluded_limbs.values():
+        for var in self.excluded_segments.values():
             var.set(False)
 
-    def _update_exclusion_status(self, *args):
-        """Update the exclusion status label"""
-        excluded_limbs = [limb for limb, var in self.excluded_limbs.items() if var.get()]
-        if excluded_limbs:
-            self.exclusion_status.set(f"Excluded limbs: {', '.join(excluded_limbs)}")
+    def _update_exclusion_status_segments(self, *args):
+        """Update the exclusion status label for segments"""
+        excluded = [seg for seg, var in self.excluded_segments.items() if var.get()]
+        if excluded:
+            self.exclusion_status.set(f"Excluded segments: {', '.join(excluded)}")
         else:
-            self.exclusion_status.set("No limbs excluded")
+            self.exclusion_status.set("No segments excluded")
 
     def _on_cache_size_change(self, *args):
         """Handle change in frame cache size"""
@@ -2721,6 +2743,103 @@ cached frames (see cache controls)"""
             os.makedirs(fallback_dir, exist_ok=True)
             logger.info(f"Using temp fallback output directory: {fallback_dir}")
             return fallback_dir
+
+    def _select_point_from_dropdown(self):
+        """Set the selected point from the dropdown as active and allow placing it with likelihood=1 and finite x/y"""
+        label = self.point_select_var.get()
+        cam = self.camera_var.get()
+        try:
+            frame = int(self.frame_var.get())
+        except ValueError:
+            return
+        h5_path = self.last_csv_path.get(cam)
+        pose_df = self.pose_cache.get(cam)
+        if not label or not h5_path or pose_df is None:
+            return
+        scorer = pose_df.columns.levels[0][0]
+        # If the point is not currently rendered (likelihood <= 0 or x/y not finite), set it to a default position (e.g., center) and likelihood=1
+        x, y = None, None
+        if (scorer, label, 'x') in pose_df.columns and (scorer, label, 'y') in pose_df.columns:
+            x = pose_df.at[frame, (scorer, label, 'x')]
+            y = pose_df.at[frame, (scorer, label, 'y')]
+        # Fix linter error: check for None before np.isfinite
+        if x is None or y is None or not (np.isfinite(x) and np.isfinite(y)):
+            x, y = 0.0, 0.0
+        # Set likelihood to 1 and update position
+        if (scorer, label, 'x') in pose_df.columns:
+            pose_df.at[frame, (scorer, label, 'x')] = x
+        if (scorer, label, 'y') in pose_df.columns:
+            pose_df.at[frame, (scorer, label, 'y')] = y
+        if (scorer, label, 'likelihood') in pose_df.columns:
+            pose_df.at[frame, (scorer, label, 'likelihood')] = 1.0
+        self.selected_point['active'] = True
+        self.selected_point['x'] = x
+        self.selected_point['y'] = y
+        self.selected_point['label'] = label
+        self.status.set(f"Selected {label} from dropdown and placed at ({x:.1f}, {y:.1f}) with likelihood 1")
+        self._pending_pose_edits.add(cam)
+        self._update_target_info()
+        self.update_display()
+
+    def _delete_selected_point(self):
+        """Set the likelihood of the selected point in the current frame to 0 (delete it) and set x/y to NaN"""
+        label = self.point_select_var.get()
+        cam = self.camera_var.get()
+        try:
+            frame = int(self.frame_var.get())
+        except ValueError:
+            return
+        h5_path = self.last_csv_path.get(cam)
+        pose_df = self.pose_cache.get(cam)
+        if not label or not h5_path or pose_df is None:
+            return
+        scorer = pose_df.columns.levels[0][0]
+        if (scorer, label, 'likelihood') in pose_df.columns:
+            pose_df.at[frame, (scorer, label, 'likelihood')] = 0.0
+        if (scorer, label, 'x') in pose_df.columns:
+            pose_df.at[frame, (scorer, label, 'x')] = np.nan
+        if (scorer, label, 'y') in pose_df.columns:
+            pose_df.at[frame, (scorer, label, 'y')] = np.nan
+        self._pending_pose_edits.add(cam)
+        self.status.set(f"Deleted {label} at frame {frame} (likelihood set to 0, x/y set to NaN)")
+        # After deleting, set dropdown to next available point (if any), or clear
+        if hasattr(self, 'all_bodyparts') and self.all_bodyparts:
+            next_idx = self.all_bodyparts.index(label) + 1 if label in self.all_bodyparts else 0
+            if next_idx >= len(self.all_bodyparts):
+                next_idx = 0
+            if len(self.all_bodyparts) > 1:
+            
+                self.point_select_var.set(self.all_bodyparts[next_idx])
+            else:
+                self.point_select_var.set("")
+        self.update_display()
+
+    def _delete_points_of_type(self):
+        """Delete all points of the types checked for the current frame (likelihood=0, x/y=NaN)"""
+        types = [seg for seg, var in self.delete_type_vars.items() if var.get()]
+        if not types:
+            return
+        cam = self.camera_var.get() if hasattr(self, 'camera_var') else None
+        try:
+            frame = int(self.frame_var.get())
+        except Exception:
+            return
+        h5_path = self.last_csv_path.get(cam) if hasattr(self, 'last_csv_path') else None
+        pose_df = self.pose_cache.get(cam) if hasattr(self, 'pose_cache') else None
+        if not h5_path or pose_df is None:
+            return
+        scorer = pose_df.columns.levels[0][0]
+        for label in types:
+            if (scorer, label, 'likelihood') in pose_df.columns:
+                pose_df.at[frame, (scorer, label, 'likelihood')] = 0.0
+            if (scorer, label, 'x') in pose_df.columns:
+                pose_df.at[frame, (scorer, label, 'x')] = np.nan
+            if (scorer, label, 'y') in pose_df.columns:
+                pose_df.at[frame, (scorer, label, 'y')] = np.nan
+        if cam:
+            self._pending_pose_edits.add(cam)
+        self.status.set(f"Deleted points: {', '.join(types)} at frame {frame}")
+        self.update_display()
 
 def main():
     """Main application entry point"""
