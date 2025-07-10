@@ -65,7 +65,9 @@ class ErrorDetection:
         while current_start < total_length:
             current_end = min(current_start + segment_length, total_length)
             segments.append((current_start, current_end))
-            current_start += segment_length + start_segment_setup
+            # New pattern: start_frame, run_frame, start_frame, start_frame, run_frame...
+            # Next trial starts after: current_end + start_segment_setup + start_segment_setup
+            current_start = current_end + (2 * start_segment_setup)
         return segments
 
     @staticmethod
@@ -79,11 +81,17 @@ class ErrorDetection:
         all_angle_outliers = []
         total_length = len(self.angles_df.index)
         segments = self.get_highlight_segments(total_length, self.start_segment_setup, self.segment_length)
+        # Create highlighted mask to only consider frames within segments
+        highlighted_mask = np.zeros(total_length, dtype=bool)
+        for start, end in segments:
+            highlighted_mask[start:end] = True
+        
         for column_name in self.angle_columns:
             angle_series = self.angles_df[column_name]
             smoothed_angle_series = savgol_filter(angle_series, self.window_length, self.polyorder, deriv=0)
             difference = np.abs(angle_series - smoothed_angle_series)
-            black_highlighted_frames = difference[difference > self.difference_threshold]
+            # Only consider outliers within highlighted segments
+            black_highlighted_frames = difference[(difference > self.difference_threshold) & highlighted_mask]
             if black_highlighted_frames.empty:
                 continue
             frame_list = black_highlighted_frames.index.tolist()

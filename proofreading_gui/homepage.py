@@ -1517,8 +1517,15 @@ cached frames (see cache controls)"""
         frame_length = int(self.frame_length.get())
         setup_time = int(self.setup_time.get())
         
-        # Calculate trial start frame: (setup_time + frame_length) * (trial_num - 1) + setup_time
-        trial_start = (setup_time + frame_length) * (trial_num - 1) + setup_time
+        # Calculate trial start frame using new pattern: start_frame, run_frame, start_frame, start_frame, run_frame
+        # Trial 1: setup_time
+        # Trial 2: setup_time + frame_length + 2*setup_time = frame_length + 3*setup_time
+        # Trial 3: previous_end + 2*setup_time
+        if trial_num == 1:
+            trial_start = setup_time
+        else:
+            # For trial n > 1: previous trials total + spacing
+            trial_start = setup_time + (trial_num - 1) * (frame_length + 2 * setup_time)
         # Add relative frame to get absolute frame
         absolute_frame = trial_start + relative_start
         
@@ -2439,8 +2446,12 @@ cached frames (see cache controls)"""
             frame_length = int(self.frame_length.get())
             setup_time = int(self.setup_time.get())
             
-            # Calculate trial start frame: (setup_time + frame_length) * (trial_num - 1) + setup_time
-            trial_start = (setup_time + frame_length) * (trial_num - 1) + setup_time
+            # Calculate trial start frame using new pattern: start_frame, run_frame, start_frame, start_frame, run_frame
+            if trial_num == 1:
+                trial_start = setup_time
+            else:
+                # For trial n > 1: previous trials total + spacing
+                trial_start = setup_time + (trial_num - 1) * (frame_length + 2 * setup_time)
             # Add relative frames to get absolute frames
             absolute_start = trial_start + relative_start
             absolute_end = trial_start + relative_end
