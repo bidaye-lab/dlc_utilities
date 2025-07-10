@@ -117,6 +117,8 @@ class ProofreadingInterface:
         self.frame_cache_size = 10  # Number of frames to cache per camera
         self.frame_cache_order = {}  # {camera: [frame_nums]} for LRU tracking
         
+        self.frame_skip_amount = 10  # Default skip amount for z/x hotkeys
+        
         self._build_interface()
         
         # Set up variable change callbacks
@@ -1330,7 +1332,7 @@ class ProofreadingInterface:
 Q/E: Previous/Next error
 S: Next recommended camera
 Space: Play/Pause error range
-C: Clear selected point
+C: Lock/Unlock point selection
 Left-click on point: Select point
 Left-click on empty space: Move selected point
 Drag: Move point freely
@@ -1352,6 +1354,11 @@ cached frames (see cache controls)"""
         self.point_select_var.trace_add('write', self._on_point_select_var_change)
         # Removed the Select Point button
         tk.Label(target_frame, text="Left-click to select/move", font=('', 8)).pack(side='left')
+        
+        # Add lock/unlock button
+        self.lock_button = tk.Button(target_frame, text="Lock Selection", command=self._toggle_point_lock, 
+                                      state='disabled', font=('', 8))
+        self.lock_button.pack(side='left', padx=(5, 0))
         
         # Selected point info
         self.selected_point_text = tk.Text(target_frame, height=3, width=35, wrap='word', 
@@ -1392,7 +1399,7 @@ cached frames (see cache controls)"""
         self.moving_point = {'active': False, 'index': None, 'start_x': None, 'start_y': None}
         
         # Selected point state
-        self.selected_point = {'active': False, 'x': None, 'y': None, 'label': None}
+        self.selected_point = {'active': False, 'x': None, 'y': None, 'label': None, 'locked': False}
         
         # Load progress and jump to first incomplete error
         start_idx = 0
@@ -1980,19 +1987,28 @@ cached frames (see cache controls)"""
         """Handle mouse press for point selection and moving selected point"""
         if (self.edit_mode_var.get() and self.scatter is not None and 
             hasattr(self.scatter, 'contains') and event.inaxes == self.ax):
-            
             cont, ind = self.scatter.contains(event)
             if cont and 'ind' in ind and len(ind['ind']) > 0:
                 i = int(ind['ind'][0])
+                if i < len(self.scatter_labels):
+                    label = self.scatter_labels[i]
+                    # Ensure locked key exists (for backwards compatibility)
+                    if 'locked' not in self.selected_point:
+                        self.selected_point['locked'] = False
+                    # STRICT: If locked and different label, return immediately before any state change
+                    if (self.selected_point['active'] and self.selected_point['locked'] and 
+                        self.selected_point['label'] != label):
+                        self.status.set(f"Selection is locked on {self.selected_point['label']}. Press 'c' to unlock or use the unlock button.")
+                        logger.debug(f"Selection locked: attempted to select {label} while locked on {self.selected_point['label']}")
+                        return  # Do not change selection at all
+                # Only update selection if not locked or same label
                 self.moving_point['active'] = True
                 self.moving_point['index'] = i
-                
                 offsets = self.scatter.get_offsets()
                 if not isinstance(offsets, np.ndarray):
                     offsets = np.array(offsets)
                 self.moving_point['start_x'] = float(offsets[i][0])
                 self.moving_point['start_y'] = float(offsets[i][1])
-                
                 if i < len(self.scatter_labels):
                     label = self.scatter_labels[i]
                     x, y = self.moving_point['start_x'], self.moving_point['start_y']
@@ -2001,14 +2017,13 @@ cached frames (see cache controls)"""
                     self.selected_point['y'] = y
                     self.selected_point['label'] = label
                     self.point_select_var.set(label)  # Sync dropdown with selected point
-                    self.selected_point_text.config(state='normal')
-                    self.selected_point_text.delete(1.0, 'end')
-                    self.selected_point_text.insert(1.0, f"Selected: {label}\nPosition: ({x:.1f}, {y:.1f})")
-                    self.selected_point_text.config(state='disabled')
+                    self._update_target_info()
+                    self._update_unlock_button()
                     self.status.set(f"Selected {label}")
             else:
                 # Clicked on empty space - move selected point if one is selected
                 if self.selected_point['active'] and event.xdata is not None and event.ydata is not None:
+                    
                     # Move selected point in the pose dataframe
                     cam = self.camera_var.get()
                     frame = int(self.frame_var.get())
@@ -2574,6 +2589,16 @@ cached frames (see cache controls)"""
             self.prev_frame()
         elif event.char == 'd':
             self.next_frame()
+        elif event.char == 'z':
+            self.skip_frames(-self.frame_skip_amount)
+        elif event.char == 'x':
+            self.skip_frames(self.frame_skip_amount)
+        elif event.char.lower() == 'z' and event.state & 0x1:  # Shift+Z
+            self.frame_skip_amount = min(100, self.frame_skip_amount + 1)
+            self.status.set(f"Frame skip amount: {self.frame_skip_amount}")
+        elif event.char.lower() == 'x' and event.state & 0x1:  # Shift+X
+            self.frame_skip_amount = max(1, self.frame_skip_amount - 1)
+            self.status.set(f"Frame skip amount: {self.frame_skip_amount}")
         elif event.char == 'e':
             self.goto_error(1)  # Next error
         elif event.char == 'q':
@@ -2587,7 +2612,7 @@ cached frames (see cache controls)"""
             else:
                 self.play_error_range()
         elif event.char == 'c':
-            self._clear_selected_point()
+            self._toggle_point_lock()
 
     def next_recommended_camera(self):
         """Cycle to the next recommended camera for the current error"""
@@ -2657,7 +2682,15 @@ cached frames (see cache controls)"""
 
     def _clear_selected_point(self):
         """Clear the selected point"""
-        self.selected_point = {'active': False, 'x': None, 'y': None, 'label': None}
+        # Ensure locked key exists (for backwards compatibility)
+        if 'locked' not in self.selected_point:
+            self.selected_point['locked'] = False
+        
+        if self.selected_point['active'] and self.selected_point['locked']:
+            self.status.set(f"Selection is locked on {self.selected_point['label']}. Press 'c' to unlock or use the unlock button.")
+            return
+        
+        self.selected_point = {'active': False, 'x': None, 'y': None, 'label': None, 'locked': False}
         self.selected_point_text.delete(1.0, 'end')
         self.selected_point_text.insert(1.0, "No point selected")
         self.selected_point_text.config(state='disabled')
@@ -2669,14 +2702,57 @@ cached frames (see cache controls)"""
         self.selected_point_text.config(state='disabled')
         
         self.status.set("Selected point cleared")
+        self._update_unlock_button()
         self.update_display()  # Redraw to remove selected point visualization
+
+    def _toggle_point_lock(self):
+        """Toggle the lock state of the selected point"""
+        if not self.selected_point['active']:
+            self.status.set("No point selected to lock/unlock selection")
+            return
+        
+        # Ensure locked key exists (for backwards compatibility)
+        if 'locked' not in self.selected_point:
+            self.selected_point['locked'] = False
+        
+        # Toggle lock state
+        self.selected_point['locked'] = not self.selected_point['locked']
+        
+        # Update status and display
+        if self.selected_point['locked']:
+            self.status.set(f"Selection is now LOCKED on {self.selected_point['label']}")
+        else:
+            self.status.set(f"Selection is now UNLOCKED from {self.selected_point['label']}")
+        
+        self._update_target_info()
+        self._update_unlock_button()
+        self.update_display()
+
+    def _update_unlock_button(self):
+        """Update the state and text of the lock/unlock button"""
+        # Ensure locked key exists (for backwards compatibility)
+        if 'locked' not in self.selected_point:
+            self.selected_point['locked'] = False
+        if self.selected_point['active']:
+            self.lock_button.config(state='normal')
+            if self.selected_point['locked']:
+                self.lock_button.config(text='Unlock Selection')
+            else:
+                self.lock_button.config(text='Lock Selection')
+        else:
+            self.lock_button.config(state='disabled', text='Lock Selection')
 
     def _update_target_info(self):
         """Update the selected point information"""
         if self.selected_point['active'] and self.selected_point['x'] is not None and self.selected_point['y'] is not None:
+            # Ensure locked key exists (for backwards compatibility)
+            if 'locked' not in self.selected_point:
+                self.selected_point['locked'] = False
+            
             self.selected_point_text.config(state='normal')
             self.selected_point_text.delete(1.0, 'end')
-            self.selected_point_text.insert(1.0, f"Selected: {self.selected_point['label']}\n"
+            lock_status = " [SELECTION LOCKED]" if self.selected_point['locked'] else ""
+            self.selected_point_text.insert(1.0, f"Selected: {self.selected_point['label']}{lock_status}\n"
                                                 f"Position: ({self.selected_point['x']:.1f}, {self.selected_point['y']:.1f})")
             self.selected_point_text.config(state='disabled')
 
@@ -2695,6 +2771,16 @@ cached frames (see cache controls)"""
     
     def _set_target_to_bodypart(self, bodypart):
         """Set target to a specific bodypart if it exists in current display"""
+        # Ensure locked key exists (for backwards compatibility)
+        if 'locked' not in self.selected_point:
+            self.selected_point['locked'] = False
+        
+        # Check if current point is locked and trying to select a different bodypart
+        if (self.selected_point['active'] and self.selected_point['locked'] and 
+            self.selected_point['label'] != bodypart):
+            self.status.set(f"Selection is locked on {self.selected_point['label']}. Cannot auto-select {bodypart}.")
+            return
+        
         if self.scatter is not None and self.scatter_labels:
             for i, label in enumerate(self.scatter_labels):
                 if label == bodypart:
@@ -2703,12 +2789,17 @@ cached frames (see cache controls)"""
                         offsets = np.array(offsets)
                     x, y = float(offsets[i][0]), float(offsets[i][1])
                     
+                    # Preserve locked state if switching to the same point
+                    locked_state = (self.selected_point['locked'] if self.selected_point['active'] and 
+                                   self.selected_point['label'] == label else False)
                     self.selected_point['active'] = True
                     self.selected_point['x'] = x
                     self.selected_point['y'] = y
                     self.selected_point['label'] = label
+                    self.selected_point['locked'] = locked_state
                     self.status.set(f"Auto-target set to {label} at ({x:.1f}, {y:.1f})")
                     self._update_target_info()
+                    self._update_unlock_button()
                     self.update_display()
                     return
 
@@ -2849,12 +2940,26 @@ cached frames (see cache controls)"""
     def _on_point_select_var_change(self, *args):
         """Update and place the selected point when the combobox value changes."""
         label = self.point_select_var.get()
+        
+        # Ensure locked key exists (for backwards compatibility)
+        if 'locked' not in self.selected_point:
+            self.selected_point['locked'] = False
+        
+        # STRICT: If locked and trying to select a different point, do nothing and reset dropdown
+        if (self.selected_point['active'] and self.selected_point['locked'] and 
+            self.selected_point['label'] != label and label):
+            self.status.set(f"Selection is locked on {self.selected_point['label']}. Press 'c' to unlock or use the unlock button.")
+            # Reset dropdown to locked point
+            self.point_select_var.set(self.selected_point['label'])
+            return
+        
         if not label:
-            self.selected_point = {'active': False, 'x': None, 'y': None, 'label': None}
+            self.selected_point = {'active': False, 'x': None, 'y': None, 'label': None, 'locked': False}
             self.selected_point_text.config(state='normal')
             self.selected_point_text.delete(1.0, 'end')
             self.selected_point_text.insert(1.0, "No point selected")
             self.selected_point_text.config(state='disabled')
+            self._update_unlock_button()
             return
         cam = self.camera_var.get()
         try:
@@ -2883,6 +2988,17 @@ cached frames (see cache controls)"""
         self._pending_pose_edits.add(cam)
         self._update_target_info()
         self.update_display()
+
+    def skip_frames(self, amount):
+        """Skip forward or backward by a custom number of frames (with bounds checking)"""
+        try:
+            current = int(self.frame_var.get())
+            cam = self.camera_var.get()
+            max_frame = self.video_frame_counts.get(cam, 1) - 1
+            new_frame = max(0, min(max_frame, current + amount))
+            self.frame_var.set(str(new_frame))
+        except ValueError:
+            pass
 
 def main():
     """Main application entry point"""
