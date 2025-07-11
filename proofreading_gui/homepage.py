@@ -3599,54 +3599,62 @@ cached frames (see cache controls)"""
         return os.path.join(directory, most_recent_folder)
     
     def _version_existing_pose_files(self, directory):
-        """Version existing pose-2d-filtered folders"""
+        """Version all existing folders except videos-raw and corrected-pose-2d"""
         import re
         
-        # Get all pose-2d-filtered folders
+        # Get all folders except videos-raw and corrected-pose-2d
         all_folders = [f for f in os.listdir(directory) 
-                      if f.startswith("pose-2d-filtered") and os.path.isdir(os.path.join(directory, f))]
+                      if os.path.isdir(os.path.join(directory, f)) 
+                      and f != "videos-raw" 
+                      and not f.startswith("corrected-pose-2d")]
         
         if not all_folders:
-            logger.info("No existing pose-2d-filtered folders to version")
+            logger.info("No existing folders to version")
             return
         
-        logger.info(f"Found {len(all_folders)} existing pose-2d-filtered folders to version")
+        logger.info(f"Found {len(all_folders)} existing folders to version")
         
-        # Separate base folders from versioned folders
-        base_folders = []
-        versioned_folders = []
+        # Group folders by base name (without version suffix)
+        folder_groups = {}
         
         for folder in all_folders:
-            if folder == "pose-2d-filtered":
-                base_folders.append(folder)
-            elif re.match(r"pose-2d-filtered-v\d+$", folder):
-                # Extract version number
-                version_match = re.search(r"-v(\d+)$", folder)
-                if version_match:
-                    version_num = int(version_match.group(1))
-                    versioned_folders.append((folder, version_num))
+            # Check if folder has version suffix
+            version_match = re.search(r"^(.+)-v(\d+)$", folder)
+            if version_match:
+                base_name = version_match.group(1)
+                version_num = int(version_match.group(2))
+                if base_name not in folder_groups:
+                    folder_groups[base_name] = {'base': [], 'versioned': []}
+                folder_groups[base_name]['versioned'].append((folder, version_num))
+            else:
+                # This is a base folder (no version suffix)
+                if folder not in folder_groups:
+                    folder_groups[folder] = {'base': [], 'versioned': []}
+                folder_groups[folder]['base'].append(folder)
         
-        # Sort versioned folders by version number (highest first)
-        versioned_folders.sort(key=lambda x: x[1], reverse=True)
-        
-        # Rename versioned folders first (highest version to lowest)
-        for folder_name, version_num in versioned_folders:
-            old_path = os.path.join(directory, folder_name)
-            new_version = version_num + 1
-            new_name = f"pose-2d-filtered-v{new_version}"
-            new_path = os.path.join(directory, new_name)
+        # Process each folder group
+        for base_name, group in folder_groups.items():
+            # Sort versioned folders by version number (highest first)
+            group['versioned'].sort(key=lambda x: x[1], reverse=True)
             
-            logger.info(f"Versioning folder: {folder_name} -> {new_name}")
-            shutil.move(old_path, new_path)
-        
-        # Finally, rename the base folder (pose-2d-filtered) to v1
-        for folder_name in base_folders:
-            old_path = os.path.join(directory, folder_name)
-            new_name = "pose-2d-filtered-v1"
-            new_path = os.path.join(directory, new_name)
+            # Rename versioned folders first (highest version to lowest)
+            for folder_name, version_num in group['versioned']:
+                old_path = os.path.join(directory, folder_name)
+                new_version = version_num + 1
+                new_name = f"{base_name}-v{new_version}"
+                new_path = os.path.join(directory, new_name)
+                
+                logger.info(f"Versioning folder: {folder_name} -> {new_name}")
+                shutil.move(old_path, new_path)
             
-            logger.info(f"Versioning folder: {folder_name} -> {new_name}")
-            shutil.move(old_path, new_path)
+            # Finally, rename the base folder to v1
+            for folder_name in group['base']:
+                old_path = os.path.join(directory, folder_name)
+                new_name = f"{base_name}-v1"
+                new_path = os.path.join(directory, new_name)
+                
+                logger.info(f"Versioning folder: {folder_name} -> {new_name}")
+                shutil.move(old_path, new_path)
     
     def _rename_corrected_to_filtered(self, directory):
         """Rename corrected-pose-2d folder to pose-2d-filtered"""
