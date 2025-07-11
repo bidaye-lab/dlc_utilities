@@ -31,6 +31,12 @@ import tempfile
 import threading
 import winreg
 
+# Arm Draw Mode Constants
+ARM_DRAW_ANGLE_SENSITIVITY = 5.0    # degrees - how sharp a turn must be to place a point
+ARM_DRAW_JITTER_FILTER = 1.0        # pixels - minimum distance between points
+ARM_DRAW_PREVIEW_FREQUENCY = 1      # update preview every N points
+ARM_DRAW_PATH_SMOOTHING = 4         # moving average window size
+
 # Set up logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
@@ -1279,6 +1285,33 @@ class ProofreadingInterface:
                                     showvalue=True, length=120, command=lambda v: self.update_display())
         self.radius_slider.pack(anchor='w', padx=5)
 
+        # Image controls
+        image_controls_frame = ttk.LabelFrame(control_panel, text="Image Controls", padding=5)
+        image_controls_frame.pack(side='left', fill='y', padx=(10,0))
+        
+        # Brightness slider
+        tk.Label(image_controls_frame, text="Brightness:").pack(anchor='w')
+        self.brightness_scale = tk.DoubleVar(value=1.0)
+        self.brightness_slider = tk.Scale(image_controls_frame, from_=0.2, to=2.0, resolution=0.1, 
+                                        orient='horizontal', variable=self.brightness_scale, 
+                                        showvalue=True, length=120, command=lambda v: self.update_display())
+        self.brightness_slider.pack(anchor='w', padx=5)
+        
+        # Contrast slider
+        tk.Label(image_controls_frame, text="Contrast:").pack(anchor='w', pady=(10,0))
+        self.contrast_scale = tk.DoubleVar(value=1.0)
+        self.contrast_slider = tk.Scale(image_controls_frame, from_=0.2, to=3.0, resolution=0.1, 
+                                      orient='horizontal', variable=self.contrast_scale, 
+                                      showvalue=True, length=120, command=lambda v: self.update_display())
+        self.contrast_slider.pack(anchor='w', padx=5)
+        
+        
+        
+        # Reset button
+        reset_btn = tk.Button(image_controls_frame, text="Reset", command=self.reset_image_controls)
+        reset_btn.pack(anchor='w', pady=(10,0))
+
+
         # Main display area
         display_frame = ttk.Frame(self.video_frame)
         display_frame.pack(fill='both', expand=True, padx=10, pady=5)
@@ -1288,10 +1321,12 @@ class ProofreadingInterface:
         video_frame.pack(side='left', fill='both', expand=True, padx=(0, 5))
         
         # Create matplotlib figure for video display
-        self.fig, self.ax = plt.subplots(figsize=(10, 8))
+        self.fig, self.ax = plt.subplots(figsize=(14, 10))
         self.ax.axis('off')
+        self.fig.subplots_adjust(left=0, right=1, top=1, bottom=0)  # Remove margins
         self.canvas = FigureCanvasTkAgg(self.fig, master=video_frame)
         self.canvas.get_tk_widget().pack(fill='both', expand=True)
+
         
         # Info panel
         info_frame = ttk.LabelFrame(display_frame, text="Information", padding=5)
@@ -1310,7 +1345,7 @@ class ProofreadingInterface:
         
         # Recommended cameras
         tk.Label(info_frame, text="Recommended cameras:", font=('', 9, 'bold')).pack(anchor='w')
-        self.recommended_text = tk.Text(info_frame, height=5, width=35, wrap='word',
+        self.recommended_text = tk.Text(info_frame, height=3, width=35, wrap='word',
                                        font=('Courier', 9))
         self.recommended_text.pack(fill='x')
 
@@ -1604,7 +1639,7 @@ cached frames (see cache controls)"""
         # Check frame cache first
         cached_frame = self._get_cached_frame(cam, frame)
         if cached_frame is not None:
-            img_rgb = cached_frame
+            img_rgb = self._apply_image_adjustments(cached_frame)
             logger.debug(f"Using cached frame {frame} for camera {cam}")
             # Show cache status in main status bar
             self.status.set(f"Frame {frame} loaded from cache")
@@ -1635,6 +1670,8 @@ cached frames (see cache controls)"""
                 
                 if ret and img is not None:
                     img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+                    # Apply image adjustments
+                    img_rgb = self._apply_image_adjustments(img_rgb)
                     # Add frame to cache
                     self._add_frame_to_cache(cam, frame, img_rgb)
                     logger.debug(f"Loaded and cached frame {frame} for camera {cam}")
@@ -1966,7 +2003,7 @@ cached frames (see cache controls)"""
                 main_bodypart = naming_conversions_reverse.get(part, part)
             cams = self.camera_dict.get(main_bodypart) or self.camera_dict.get(part, [])
             if cams:
-                rec_text = "Best views:\n" + "\n".join(f"• {c}" for c in cams[:3])
+                rec_text = "\n".join(f"• {c}" for c in cams[:3])
             else:
                 rec_text = "No specific recommendations"
             self.recommended_text.insert(1.0, rec_text)
@@ -2746,8 +2783,8 @@ cached frames (see cache controls)"""
             last_x, last_y = self.arm_draw_data['path'][-1]
             distance = ((x - last_x)**2 + (y - last_y)**2)**0.5
             
-            # Only add point if it's more than 5 pixels away from last point
-            if distance < 5:
+            # Use constant jitter filter distance
+            if distance < ARM_DRAW_JITTER_FILTER:
                 return
         
         # Add point to path
@@ -2755,7 +2792,7 @@ cached frames (see cache controls)"""
         
         # Update preview points and circles (but not on every single mouse move)
         # Only update preview every few points to reduce computational load
-        if len(self.arm_draw_data['path']) % 3 == 0:  # Update every 3rd point
+        if len(self.arm_draw_data['path']) % ARM_DRAW_PREVIEW_FREQUENCY == 0:
             self._update_arm_preview()
 
     def _finish_arm_draw(self, x, y):
@@ -2803,8 +2840,11 @@ cached frames (see cache controls)"""
         
         return total_distance
 
-    def _smooth_path(self, path, window_size=5):
+    def _smooth_path(self, path, window_size=None):
         """Smooth the path using a moving average to reduce jitter"""
+        if window_size is None:
+            window_size = ARM_DRAW_PATH_SMOOTHING
+        
         if len(path) < window_size:
             return path
         
@@ -2869,11 +2909,11 @@ cached frames (see cache controls)"""
         if total_distance == 0:
             return [path[0]] * 5  # All points at start if no movement
         
-        # Find significant turn points (angles > 10 degrees)
+        # Find significant turn points using constant angle threshold
         turn_points = []
         for i in range(1, len(path) - 1):
             angle = self._calculate_turn_angle(path, i)
-            if abs(angle) > 20:
+            if abs(angle) > ARM_DRAW_ANGLE_SENSITIVITY:
                 turn_points.append((abs(angle), i, cumulative_distances[i]))
         
         # Sort turn points by angle magnitude (most significant first)
@@ -3329,6 +3369,36 @@ cached frames (see cache controls)"""
             self.frame_var.set(str(new_frame))
         except ValueError:
             pass
+
+    def reset_image_controls(self):
+        """Reset brightness and contrast to default values"""
+        self.brightness_scale.set(1.0)
+        self.contrast_scale.set(1.0)
+        self.update_display()
+
+
+    def _apply_image_adjustments(self, img_rgb):
+        """Apply brightness and contrast adjustments to image"""
+        import numpy as np
+        
+        # Convert to float for processing
+        img_float = img_rgb.astype(np.float32) / 255.0
+        
+        # Apply brightness (multiplicative)
+        brightness = self.brightness_scale.get()
+        img_float = img_float * brightness
+        
+        # Apply contrast (multiplicative around 0.5)
+        contrast = self.contrast_scale.get()
+        img_float = (img_float - 0.5) * contrast + 0.5
+        
+        # Clamp values to valid range
+        img_float = np.clip(img_float, 0.0, 1.0)
+        
+        # Convert back to uint8
+        img_adjusted = (img_float * 255).astype(np.uint8)
+        
+        return img_adjusted
 
     def mark_proofreading_complete(self):
         """Mark proofreading as complete and finalize files"""
