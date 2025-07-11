@@ -1,6 +1,7 @@
 import os
 import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
+import math
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
@@ -1330,12 +1331,13 @@ class ProofreadingInterface:
 
         # Hotkeys explanation
         tk.Label(info_frame, text="Hotkeys:", font=('', 9, 'bold')).pack(anchor='w', pady=(8,0))
-        hotkeys_text = tk.Text(info_frame, height=6, width=35, wrap='word', font=('Courier', 8))
+        hotkeys_text = tk.Text(info_frame, height=10, width=35, wrap='word', font=('Courier', 8))
         hotkeys_text.pack(fill='x', pady=(0, 5))
         hotkeys_info = """A/D: Previous/Next frame
 Q/E: Previous/Next error
 S: Next recommended camera
 Space: Play/Pause error range
+W: Arm Draw Mode (select limb point first)
 Left-click on point: Select point
 Left-click on empty space: Move selected point
 Drag: Move point freely
@@ -1413,6 +1415,16 @@ cached frames (see cache controls)"""
         
         # Selected point state
         self.selected_point = {'active': False, 'x': None, 'y': None, 'label': None}
+        
+        # Arm draw mode state
+        self.arm_draw_mode = False
+        self.arm_draw_data = {
+            'active': False,
+            'base_label': None,  # e.g., "L-F-"
+            'path': [],  # List of (x, y) coordinates from mouse drag
+            'preview_points': [],  # Calculated preview point positions
+            'preview_circles': []  # Matplotlib artists for preview
+        }
         
         # Load progress and jump to first incomplete error
         start_idx = 0
@@ -1998,6 +2010,12 @@ cached frames (see cache controls)"""
                     except:
                         pass
         
+        # Handle arm draw mode dragging
+        if (self.arm_draw_mode and self.arm_draw_data['active'] and 
+            event.xdata is not None and event.ydata is not None):
+            self._continue_arm_draw(event.xdata, event.ydata)
+            return
+        
         # Handle point dragging
         if (self.edit_mode_var.get() and self.moving_point['active'] and 
             event.xdata is not None and event.ydata is not None):
@@ -2005,6 +2023,12 @@ cached frames (see cache controls)"""
 
     def on_mouse_press(self, event):
         """Handle mouse press for point selection and moving selected point"""
+        # Handle arm draw mode
+        if (self.arm_draw_mode and event.inaxes == self.ax and 
+            event.xdata is not None and event.ydata is not None):
+            self._start_arm_draw(event.xdata, event.ydata)
+            return
+        
         if (self.edit_mode_var.get() and self.scatter is not None and 
             hasattr(self.scatter, 'contains') and event.inaxes == self.ax):
             cont, ind = self.scatter.contains(event)
@@ -2073,6 +2097,12 @@ cached frames (see cache controls)"""
 
     def on_mouse_release(self, event):
         """Handle mouse release to save point changes"""
+        # Handle arm draw mode completion
+        if (self.arm_draw_mode and self.arm_draw_data['active'] and 
+            event.xdata is not None and event.ydata is not None):
+            self._finish_arm_draw(event.xdata, event.ydata)
+            return
+        
         if (self.edit_mode_var.get() and self.moving_point['active'] and 
             event.xdata is not None and event.ydata is not None):
             
@@ -2628,6 +2658,365 @@ cached frames (see cache controls)"""
                 self.toggle_pause_error()
             else:
                 self.play_error_range()
+        elif event.char == 'w':
+            self._toggle_arm_draw_mode()
+        elif event.keysym == 'Escape':
+            self._cancel_arm_draw_mode()
+
+    def _toggle_arm_draw_mode(self):
+        """Toggle arm draw mode if a limb point is selected"""
+        if not self.selected_point['active']:
+            self.status.set("No point selected. Select a limb point first.")
+            return
+        
+        # Check if selected point is a limb point (has pattern like L-F-ThC)
+        label = self.selected_point['label']
+        if not self._is_limb_point(label):
+            self.status.set("Selected point is not a limb point. Select a limb point (e.g., L-F-ThC).")
+            return
+        
+        if self.arm_draw_mode:
+            self._cancel_arm_draw_mode()
+        else:
+            self._start_arm_draw_mode(label)
+
+    def _is_limb_point(self, label):
+        """Check if a label represents a limb point"""
+        if not label:
+            return False
+        
+        # Check for pattern like L-F-ThC, R-H-CTr, etc.
+        parts = label.split('-')
+        if len(parts) != 3:
+            return False
+        
+        side, limb, segment = parts
+        return (side in ['L', 'R'] and 
+                limb in ['F', 'M', 'H'] and 
+                segment in ['ThC', 'CTr', 'FeTi', 'TiTa', 'TaG'])
+
+    def _start_arm_draw_mode(self, label):
+        """Start arm draw mode for the selected limb"""
+        # Extract base label (e.g., "L-F-" from "L-F-ThC")
+        parts = label.split('-')
+        base_label = f"{parts[0]}-{parts[1]}-"
+        
+        self.arm_draw_mode = True
+        self.arm_draw_data['active'] = True
+        self.arm_draw_data['base_label'] = base_label
+        self.arm_draw_data['path'] = []
+        self.arm_draw_data['preview_points'] = []
+        self._clear_preview_circles()
+        
+        self.status.set(f"Arm Draw Mode: Draw the {base_label} limb. Press Esc to cancel.")
+
+    def _cancel_arm_draw_mode(self):
+        """Cancel arm draw mode and clear preview"""
+        if self.arm_draw_mode:
+            self.arm_draw_mode = False
+            self.arm_draw_data['active'] = False
+            self.arm_draw_data['base_label'] = None
+            self.arm_draw_data['path'] = []
+            self.arm_draw_data['preview_points'] = []
+            self._clear_preview_circles()
+            self.status.set("Arm Draw Mode cancelled.")
+
+    def _clear_preview_circles(self):
+        """Clear all preview circles from the plot"""
+        for circle in self.arm_draw_data['preview_circles']:
+            circle.remove()
+        self.arm_draw_data['preview_circles'] = []
+        if hasattr(self, 'ax') and self.ax:
+            self.ax.figure.canvas.draw_idle()
+
+    def _start_arm_draw(self, x, y):
+        """Start drawing an arm path"""
+        self.arm_draw_data['active'] = True
+        self.arm_draw_data['path'] = [(x, y)]
+        self.arm_draw_data['preview_points'] = []
+        self._clear_preview_circles()
+
+    def _continue_arm_draw(self, x, y):
+        """Continue drawing arm path and update preview"""
+        if not self.arm_draw_data['active']:
+            return
+        
+        # Filter out mouse jitter - only add points if they're far enough from the last point
+        if len(self.arm_draw_data['path']) > 0:
+            last_x, last_y = self.arm_draw_data['path'][-1]
+            distance = ((x - last_x)**2 + (y - last_y)**2)**0.5
+            
+            # Only add point if it's more than 5 pixels away from last point
+            if distance < 5:
+                return
+        
+        # Add point to path
+        self.arm_draw_data['path'].append((x, y))
+        
+        # Update preview points and circles (but not on every single mouse move)
+        # Only update preview every few points to reduce computational load
+        if len(self.arm_draw_data['path']) % 3 == 0:  # Update every 3rd point
+            self._update_arm_preview()
+
+    def _finish_arm_draw(self, x, y):
+        """Finish drawing arm and place final points"""
+        if not self.arm_draw_data['active']:
+            return
+        
+        # Add final point
+        self.arm_draw_data['path'].append((x, y))
+        
+        # Check minimum distance
+        if len(self.arm_draw_data['path']) < 2:
+            self._cancel_arm_draw_mode()
+            return
+        
+        total_distance = self._calculate_path_distance(self.arm_draw_data['path'])
+        if total_distance < 20:  # Minimum distance in pixels
+            self.status.set("Draw distance too short. Try drawing a longer path.")
+            self._cancel_arm_draw_mode()
+            return
+        
+        # Smooth the path to reduce jitter effects
+        smoothed_path = self._smooth_path(self.arm_draw_data['path'])
+        
+        # Calculate final point positions
+        final_points = self._distribute_limb_points(smoothed_path)
+        
+        # Place the points in the pose data
+        self._place_limb_points(final_points)
+        
+        # Clean up and exit draw mode
+        self._cancel_arm_draw_mode()
+        self.update_display()
+
+    def _calculate_path_distance(self, path):
+        """Calculate total distance of the drawn path"""
+        if len(path) < 2:
+            return 0
+        
+        total_distance = 0
+        for i in range(1, len(path)):
+            dx = path[i][0] - path[i-1][0]
+            dy = path[i][1] - path[i-1][1]
+            total_distance += (dx**2 + dy**2)**0.5
+        
+        return total_distance
+
+    def _smooth_path(self, path, window_size=5):
+        """Smooth the path using a moving average to reduce jitter"""
+        if len(path) < window_size:
+            return path
+        
+        smoothed_path = []
+        half_window = window_size // 2
+        
+        for i in range(len(path)):
+            # Calculate the window bounds
+            start = max(0, i - half_window)
+            end = min(len(path), i + half_window + 1)
+            
+            # Calculate average position in the window
+            avg_x = sum(p[0] for p in path[start:end]) / (end - start)
+            avg_y = sum(p[1] for p in path[start:end]) / (end - start)
+            
+            smoothed_path.append((avg_x, avg_y))
+        
+        return smoothed_path
+
+    def _update_arm_preview(self):
+        """Update preview circles showing where points will be placed"""
+        if not self.arm_draw_data['path'] or len(self.arm_draw_data['path']) < 2:
+            return
+        
+        # Smooth the path for better preview
+        smoothed_path = self._smooth_path(self.arm_draw_data['path'])
+        
+        # Calculate preview points
+        preview_points = self._distribute_limb_points(smoothed_path)
+        self.arm_draw_data['preview_points'] = preview_points
+        
+        # Clear existing preview circles
+        self._clear_preview_circles()
+        
+        # Create new preview circles
+        if hasattr(self, 'ax') and self.ax:
+            limb_segments = ['ThC', 'CTr', 'FeTi', 'TiTa', 'TaG']
+            colors = ['red', 'orange', 'yellow', 'green', 'blue']  # Different colors for each segment
+            
+            for i, (x, y) in enumerate(preview_points):
+                circle = plt.Circle((x, y), 8, color=colors[i % len(colors)], 
+                                  fill=False, linestyle='--', linewidth=3, alpha=0.8)
+                self.ax.add_patch(circle)
+                self.arm_draw_data['preview_circles'].append(circle)
+            
+            self.ax.figure.canvas.draw_idle()
+
+    def _distribute_limb_points(self, path):
+        """Distribute 5 limb points along the drawn path, prioritizing turn points"""
+        if len(path) < 2:
+            return []
+        
+        # Calculate cumulative distances along the path
+        cumulative_distances = [0]
+        for i in range(1, len(path)):
+            dx = path[i][0] - path[i-1][0]
+            dy = path[i][1] - path[i-1][1]
+            distance = (dx**2 + dy**2)**0.5
+            cumulative_distances.append(cumulative_distances[-1] + distance)
+        
+        total_distance = cumulative_distances[-1]
+        if total_distance == 0:
+            return [path[0]] * 5  # All points at start if no movement
+        
+        # Find significant turn points (angles > 10 degrees)
+        turn_points = []
+        for i in range(1, len(path) - 1):
+            angle = self._calculate_turn_angle(path, i)
+            if abs(angle) > 20:
+                turn_points.append((abs(angle), i, cumulative_distances[i]))
+        
+        # Sort turn points by angle magnitude (most significant first)
+        turn_points.sort(reverse=True)
+        
+        # Start with evenly spaced points along the path
+        target_distances = [total_distance * i / 4.0 for i in range(5)]
+        final_indices = []
+        
+        # Convert target distances to path indices
+        for target_dist in target_distances:
+            # Find the closest point on the path to this target distance
+            best_idx = 0
+            min_diff = abs(cumulative_distances[0] - target_dist)
+            for i, cum_dist in enumerate(cumulative_distances):
+                diff = abs(cum_dist - target_dist)
+                if diff < min_diff:
+                    min_diff = diff
+                    best_idx = i
+            final_indices.append(best_idx)
+        
+        # Replace some evenly spaced points with turn points if they're significant
+        # But only if they don't create duplicates or break the order
+        for angle, turn_idx, turn_dist in turn_points[:3]:  # Consider top 3 turns
+            # Find which evenly spaced point this turn is closest to
+            closest_target_idx = 0
+            min_dist_diff = abs(target_distances[0] - turn_dist)
+            for i, target_dist in enumerate(target_distances):
+                diff = abs(target_dist - turn_dist)
+                if diff < min_dist_diff:
+                    min_dist_diff = diff
+                    closest_target_idx = i
+            
+            # Replace the closest evenly spaced point with the turn point
+            # but only if it doesn't create a duplicate
+            if turn_idx not in final_indices:
+                final_indices[closest_target_idx] = turn_idx
+        
+        # Sort indices and ensure no duplicates
+        final_indices = sorted(list(set(final_indices)))
+        
+        # If we have fewer than 5 unique indices, fill with evenly spaced points
+        while len(final_indices) < 5:
+            # Find the largest gap and add a point in the middle
+            max_gap = 0
+            insert_pos = 0
+            for i in range(len(final_indices) - 1):
+                gap = final_indices[i+1] - final_indices[i]
+                if gap > max_gap:
+                    max_gap = gap
+                    insert_pos = (final_indices[i] + final_indices[i+1]) // 2
+            
+            if insert_pos not in final_indices:
+                final_indices.append(insert_pos)
+                final_indices.sort()
+            else:
+                # Fallback: add points at regular intervals
+                break
+        
+        # Ensure exactly 5 points by trimming or padding
+        if len(final_indices) > 5:
+            # Keep the most evenly distributed 5 points
+            step = len(final_indices) // 5
+            final_indices = [final_indices[i * step] for i in range(5)]
+        elif len(final_indices) < 5:
+            # Pad with evenly spaced points
+            while len(final_indices) < 5:
+                ratio = len(final_indices) / 5.0
+                new_idx = int(ratio * (len(path) - 1))
+                if new_idx not in final_indices:
+                    final_indices.append(new_idx)
+                    final_indices.sort()
+                else:
+                    break
+        
+        # Convert indices to coordinates
+        final_points = []
+        for i in range(5):
+            if i < len(final_indices):
+                idx = final_indices[i]
+                final_points.append(path[min(idx, len(path) - 1)])
+            else:
+                # Fallback: evenly space remaining points
+                ratio = i / 4.0
+                idx = int(ratio * (len(path) - 1))
+                final_points.append(path[idx])
+        
+        return final_points
+
+
+    def _calculate_turn_angle(self, path, idx):
+        """Calculate the turn angle at a specific point in the path"""
+        if idx == 0 or idx >= len(path) - 1:
+            return 0
+        
+        # Vectors from previous to current and current to next
+        v1 = (path[idx][0] - path[idx-1][0], path[idx][1] - path[idx-1][1])
+        v2 = (path[idx+1][0] - path[idx][0], path[idx+1][1] - path[idx][1])
+        
+        # Calculate angle between vectors
+        dot_product = v1[0] * v2[0] + v1[1] * v2[1]
+        cross_product = v1[0] * v2[1] - v1[1] * v2[0]
+        
+        angle = math.atan2(cross_product, dot_product)
+        return math.degrees(angle)
+
+
+    def _place_limb_points(self, points):
+        """Place the 5 limb points in the pose data"""
+        if len(points) != 5:
+            return
+        
+        base_label = self.arm_draw_data['base_label']
+        limb_segments = ['ThC', 'CTr', 'FeTi', 'TiTa', 'TaG']
+        
+        cam = self.camera_var.get()
+        try:
+            frame = int(self.frame_var.get())
+        except ValueError:
+            return
+        
+        pose_df = self.pose_cache.get(cam)
+        if pose_df is None:
+            return
+        
+        scorer = pose_df.columns.levels[0][0]
+        
+        # Place each point
+        for i, (x, y) in enumerate(points):
+            label = f"{base_label}{limb_segments[i]}"
+            
+            # Update pose data
+            if (scorer, label, 'x') in pose_df.columns:
+                pose_df.at[frame, (scorer, label, 'x')] = x
+            if (scorer, label, 'y') in pose_df.columns:
+                pose_df.at[frame, (scorer, label, 'y')] = y
+            if (scorer, label, 'likelihood') in pose_df.columns:
+                pose_df.at[frame, (scorer, label, 'likelihood')] = 1.0
+        
+        # Mark this camera as having pending edits
+        self._pending_pose_edits.add(cam)
+        
+        self.status.set(f"Placed {len(points)} points for {base_label} limb")
 
     def next_recommended_camera(self):
         """Cycle to the next recommended camera for the current error"""
@@ -2981,10 +3370,13 @@ cached frames (see cache controls)"""
             
             logger.info(f"Starting proofreading completion process in: {corrected_dir}")
             
-            # Step 1: Version existing pose-2d-filtered files
+            # Step 1: Ensure all camera h5 files are present before versioning
+            self._ensure_all_camera_files_present(corrected_dir)
+            
+            # Step 2: Version existing pose-2d-filtered files
             self._version_existing_pose_files(corrected_dir)
             
-            # Step 2: Rename corrected-pose-2d to pose-2d-filtered
+            # Step 3: Rename corrected-pose-2d to pose-2d-filtered
             self._rename_corrected_to_filtered(corrected_dir)
             
             messagebox.showinfo(
@@ -3041,32 +3433,149 @@ cached frames (see cache controls)"""
         
         return fly_dir  # Default to fly directory
     
-    def _version_existing_pose_files(self, directory):
-        """Version existing pose-2d-filtered folders"""
-        pose_folders = [f for f in os.listdir(directory) 
-                       if f.startswith("pose-2d-filtered") and os.path.isdir(os.path.join(directory, f))]
+    def _ensure_all_camera_files_present(self, directory):
+        """Ensure all camera h5 files are present by copying from the most recent version"""
+        import glob
+        
+        # Get all camera names from the current session
+        available_cameras = self.available_cameras
+        if not available_cameras:
+            logger.warning("No cameras found in current session")
+            return
+            
+        logger.info(f"Checking for h5 files for cameras: {available_cameras}")
+        
+        # Find the corrected-pose-2d folder
+        corrected_folder = None
+        for folder in os.listdir(directory):
+            if folder.startswith("corrected-pose-2d") and os.path.isdir(os.path.join(directory, folder)):
+                corrected_folder = os.path.join(directory, folder)
+                break
+                
+        if not corrected_folder:
+            logger.warning("No corrected-pose-2d folder found")
+            return
+            
+        logger.info(f"Checking files in: {corrected_folder}")
+        
+        # Check which h5 files are missing
+        missing_cameras = []
+        for camera in available_cameras:
+            h5_pattern = os.path.join(corrected_folder, f"*{camera}*.h5")
+            h5_files = glob.glob(h5_pattern)
+            if not h5_files:
+                missing_cameras.append(camera)
+                
+        if not missing_cameras:
+            logger.info("All camera h5 files are present")
+            return
+            
+        logger.info(f"Missing h5 files for cameras: {missing_cameras}")
+        
+        # Find the most recent pose-2d-filtered version to copy from
+        source_folder = self._find_most_recent_pose_filtered_folder(directory)
+        if not source_folder:
+            logger.warning("No existing pose-2d-filtered folder found to copy missing files from")
+            return
+            
+        logger.info(f"Copying missing files from: {source_folder}")
+        
+        # Copy missing h5 files
+        for camera in missing_cameras:
+            # Find h5 files for this camera in the source folder
+            source_pattern = os.path.join(source_folder, f"*{camera}*.h5")
+            source_files = glob.glob(source_pattern)
+            
+            if source_files:
+                for source_file in source_files:
+                    filename = os.path.basename(source_file)
+                    dest_file = os.path.join(corrected_folder, filename)
+                    
+                    if not os.path.exists(dest_file):
+                        logger.info(f"Copying {filename} for camera {camera}")
+                        shutil.copy2(source_file, dest_file)
+                    else:
+                        logger.info(f"File {filename} already exists, skipping")
+            else:
+                logger.warning(f"No h5 files found for camera {camera} in source folder")
+    
+    def _find_most_recent_pose_filtered_folder(self, directory):
+        """Find the most recent pose-2d-filtered folder to copy missing files from"""
+        import re
+        
+        # Get all pose-2d-filtered folders
+        pose_folders = []
+        for folder in os.listdir(directory):
+            if folder.startswith("pose-2d-filtered") and os.path.isdir(os.path.join(directory, folder)):
+                if folder == "pose-2d-filtered":
+                    # Base folder has priority 0 (most recent)
+                    pose_folders.append((folder, 0))
+                elif re.match(r"pose-2d-filtered-v\d+$", folder):
+                    # Extract version number
+                    version_match = re.search(r"-v(\d+)$", folder)
+                    if version_match:
+                        version_num = int(version_match.group(1))
+                        pose_folders.append((folder, version_num))
         
         if not pose_folders:
+            return None
+            
+        # Sort by version number (ascending, so v1 is older than v2)
+        # But base folder (version 0) is most recent
+        pose_folders.sort(key=lambda x: x[1])
+        
+        # Return the path to the most recent folder (lowest version number)
+        most_recent_folder = pose_folders[0][0]
+        return os.path.join(directory, most_recent_folder)
+    
+    def _version_existing_pose_files(self, directory):
+        """Version existing pose-2d-filtered folders"""
+        import re
+        
+        # Get all pose-2d-filtered folders
+        all_folders = [f for f in os.listdir(directory) 
+                      if f.startswith("pose-2d-filtered") and os.path.isdir(os.path.join(directory, f))]
+        
+        if not all_folders:
             logger.info("No existing pose-2d-filtered folders to version")
             return
         
-        logger.info(f"Found {len(pose_folders)} existing pose-2d-filtered folders to version")
+        logger.info(f"Found {len(all_folders)} existing pose-2d-filtered folders to version")
         
-        for foldername in pose_folders:
-            base_name = foldername
-            version_num = 1
+        # Separate base folders from versioned folders
+        base_folders = []
+        versioned_folders = []
+        
+        for folder in all_folders:
+            if folder == "pose-2d-filtered":
+                base_folders.append(folder)
+            elif re.match(r"pose-2d-filtered-v\d+$", folder):
+                # Extract version number
+                version_match = re.search(r"-v(\d+)$", folder)
+                if version_match:
+                    version_num = int(version_match.group(1))
+                    versioned_folders.append((folder, version_num))
+        
+        # Sort versioned folders by version number (highest first)
+        versioned_folders.sort(key=lambda x: x[1], reverse=True)
+        
+        # Rename versioned folders first (highest version to lowest)
+        for folder_name, version_num in versioned_folders:
+            old_path = os.path.join(directory, folder_name)
+            new_version = version_num + 1
+            new_name = f"pose-2d-filtered-v{new_version}"
+            new_path = os.path.join(directory, new_name)
             
-            # Find the next available version number
-            while True:
-                new_name = f"{base_name}-v{version_num}"
-                new_path = os.path.join(directory, new_name)
-                
-                if not os.path.exists(new_path):
-                    break
-                version_num += 1
+            logger.info(f"Versioning folder: {folder_name} -> {new_name}")
+            shutil.move(old_path, new_path)
+        
+        # Finally, rename the base folder (pose-2d-filtered) to v1
+        for folder_name in base_folders:
+            old_path = os.path.join(directory, folder_name)
+            new_name = "pose-2d-filtered-v1"
+            new_path = os.path.join(directory, new_name)
             
-            old_path = os.path.join(directory, foldername)
-            logger.info(f"Versioning folder: {foldername} -> {new_name}")
+            logger.info(f"Versioning folder: {folder_name} -> {new_name}")
             shutil.move(old_path, new_path)
     
     def _rename_corrected_to_filtered(self, directory):
