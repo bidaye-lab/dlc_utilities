@@ -134,6 +134,7 @@ class ProofreadingInterface:
 
     def _build_interface(self):
         """Build the main interface with clear organization"""
+        
         self.notebook = ttk.Notebook(self.master)
         self.notebook.pack(fill='both', expand=True, padx=10, pady=10)
         
@@ -796,6 +797,9 @@ class ProofreadingInterface:
             self.notebook.select(1)
             self._setup_video_tab()
             
+            # Enable the proofreading complete button
+            self.complete_btn.config(state='normal')
+            
             messagebox.showinfo("Processing Complete", 
                               f"Error detection completed successfully!\n\n"
                               f"Results saved to:\n{output_dir}\n\n"
@@ -1332,7 +1336,6 @@ class ProofreadingInterface:
 Q/E: Previous/Next error
 S: Next recommended camera
 Space: Play/Pause error range
-C: Lock/Unlock point selection
 Left-click on point: Select point
 Left-click on empty space: Move selected point
 Drag: Move point freely
@@ -1355,10 +1358,6 @@ cached frames (see cache controls)"""
         # Removed the Select Point button
         tk.Label(target_frame, text="Left-click to select/move", font=('', 8)).pack(side='left')
         
-        # Add lock/unlock button
-        self.lock_button = tk.Button(target_frame, text="Lock Selection", command=self._toggle_point_lock, 
-                                      state='disabled', font=('', 8))
-        self.lock_button.pack(side='left', padx=(5, 0))
         
         # Selected point info
         self.selected_point_text = tk.Text(target_frame, height=3, width=35, wrap='word', 
@@ -1366,6 +1365,20 @@ cached frames (see cache controls)"""
         self.selected_point_text.pack(fill='x', pady=(5, 0))
         self.selected_point_text.insert(1.0, "No point selected")
         self.selected_point_text.config(state='disabled')
+        
+        # Meta Controls section
+        meta_controls_frame = ttk.LabelFrame(info_frame, text="Meta Controls", padding=5)
+        meta_controls_frame.pack(fill='x', pady=(5, 0))
+        
+        # Proofreading Complete button
+        self.complete_btn = tk.Button(meta_controls_frame, 
+                                     text="Proofreading Complete", 
+                                     command=self.mark_proofreading_complete,
+                                     font=('Arial', 10, 'bold'),
+                                     bg="#02C009", fg='white',
+                                     padx=10, pady=5,
+                                     state='disabled')
+        self.complete_btn.pack(fill='x')
         
         # Progress bar for save feedback
         self.save_progress = ttk.Progressbar(info_frame, mode='determinate', length=200)
@@ -1399,7 +1412,7 @@ cached frames (see cache controls)"""
         self.moving_point = {'active': False, 'index': None, 'start_x': None, 'start_y': None}
         
         # Selected point state
-        self.selected_point = {'active': False, 'x': None, 'y': None, 'label': None, 'locked': False}
+        self.selected_point = {'active': False, 'x': None, 'y': None, 'label': None}
         
         # Load progress and jump to first incomplete error
         start_idx = 0
@@ -1999,33 +2012,24 @@ cached frames (see cache controls)"""
                 i = int(ind['ind'][0])
                 if i < len(self.scatter_labels):
                     label = self.scatter_labels[i]
-                    # Ensure locked key exists (for backwards compatibility)
-                    if 'locked' not in self.selected_point:
-                        self.selected_point['locked'] = False
-                    # STRICT: If locked and different label, return immediately before any state change
-                    if (self.selected_point['active'] and self.selected_point['locked'] and 
-                        self.selected_point['label'] != label):
-                        self.status.set(f"Selection is locked on {self.selected_point['label']}. Press 'c' to unlock or use the unlock button.")
-                        logger.debug(f"Selection locked: attempted to select {label} while locked on {self.selected_point['label']}")
-                        return  # Do not change selection at all
-                # Only update selection if not locked or same label
-                self.moving_point['active'] = True
-                self.moving_point['index'] = i
-                offsets = self.scatter.get_offsets()
-                if not isinstance(offsets, np.ndarray):
-                    offsets = np.array(offsets)
-                self.moving_point['start_x'] = float(offsets[i][0])
-                self.moving_point['start_y'] = float(offsets[i][1])
-                if i < len(self.scatter_labels):
-                    label = self.scatter_labels[i]
+                    
+                    # Proceed with point interaction
+                    self.moving_point['active'] = True
+                    self.moving_point['index'] = i
+                    offsets = self.scatter.get_offsets()
+                    if not isinstance(offsets, np.ndarray):
+                        offsets = np.array(offsets)
+                    self.moving_point['start_x'] = float(offsets[i][0])
+                    self.moving_point['start_y'] = float(offsets[i][1])
+                    
                     x, y = self.moving_point['start_x'], self.moving_point['start_y']
+                    # Update selection
                     self.selected_point['active'] = True
                     self.selected_point['x'] = x
                     self.selected_point['y'] = y
                     self.selected_point['label'] = label
                     self.point_select_var.set(label)  # Sync dropdown with selected point
                     self._update_target_info()
-                    self._update_unlock_button()
                     self.status.set(f"Selected {label}")
             else:
                 # Clicked on empty space - move selected point if one is selected
@@ -2107,6 +2111,7 @@ cached frames (see cache controls)"""
             self.moving_point['index'] >= len(self.scatter_labels)):
             return
         
+        
         try:
             i = self.moving_point['index']
             offsets = self.scatter.get_offsets()
@@ -2125,6 +2130,7 @@ cached frames (see cache controls)"""
         if (self.moving_point['index'] is None or 
             self.moving_point['index'] >= len(self.scatter_labels)):
             return
+        
             
         try:
             i = self.moving_point['index']
@@ -2622,8 +2628,6 @@ cached frames (see cache controls)"""
                 self.toggle_pause_error()
             else:
                 self.play_error_range()
-        elif event.char == 'c':
-            self._toggle_point_lock()
 
     def next_recommended_camera(self):
         """Cycle to the next recommended camera for the current error"""
@@ -2693,15 +2697,8 @@ cached frames (see cache controls)"""
 
     def _clear_selected_point(self):
         """Clear the selected point"""
-        # Ensure locked key exists (for backwards compatibility)
-        if 'locked' not in self.selected_point:
-            self.selected_point['locked'] = False
         
-        if self.selected_point['active'] and self.selected_point['locked']:
-            self.status.set(f"Selection is locked on {self.selected_point['label']}. Press 'c' to unlock or use the unlock button.")
-            return
-        
-        self.selected_point = {'active': False, 'x': None, 'y': None, 'label': None, 'locked': False}
+        self.selected_point = {'active': False, 'x': None, 'y': None, 'label': None}
         self.selected_point_text.delete(1.0, 'end')
         self.selected_point_text.insert(1.0, "No point selected")
         self.selected_point_text.config(state='disabled')
@@ -2713,57 +2710,16 @@ cached frames (see cache controls)"""
         self.selected_point_text.config(state='disabled')
         
         self.status.set("Selected point cleared")
-        self._update_unlock_button()
         self.update_display()  # Redraw to remove selected point visualization
 
-    def _toggle_point_lock(self):
-        """Toggle the lock state of the selected point"""
-        if not self.selected_point['active']:
-            self.status.set("No point selected to lock/unlock selection")
-            return
-        
-        # Ensure locked key exists (for backwards compatibility)
-        if 'locked' not in self.selected_point:
-            self.selected_point['locked'] = False
-        
-        # Toggle lock state
-        self.selected_point['locked'] = not self.selected_point['locked']
-        
-        # Update status and display
-        if self.selected_point['locked']:
-            self.status.set(f"Selection is now LOCKED on {self.selected_point['label']}")
-        else:
-            self.status.set(f"Selection is now UNLOCKED from {self.selected_point['label']}")
-        
-        self._update_target_info()
-        self._update_unlock_button()
-        self.update_display()
 
-    def _update_unlock_button(self):
-        """Update the state and text of the lock/unlock button"""
-        # Ensure locked key exists (for backwards compatibility)
-        if 'locked' not in self.selected_point:
-            self.selected_point['locked'] = False
-        if self.selected_point['active']:
-            self.lock_button.config(state='normal')
-            if self.selected_point['locked']:
-                self.lock_button.config(text='Unlock Selection')
-            else:
-                self.lock_button.config(text='Lock Selection')
-        else:
-            self.lock_button.config(state='disabled', text='Lock Selection')
 
     def _update_target_info(self):
         """Update the selected point information"""
         if self.selected_point['active'] and self.selected_point['x'] is not None and self.selected_point['y'] is not None:
-            # Ensure locked key exists (for backwards compatibility)
-            if 'locked' not in self.selected_point:
-                self.selected_point['locked'] = False
-            
             self.selected_point_text.config(state='normal')
             self.selected_point_text.delete(1.0, 'end')
-            lock_status = " [SELECTION LOCKED]" if self.selected_point['locked'] else ""
-            self.selected_point_text.insert(1.0, f"Selected: {self.selected_point['label']}{lock_status}\n"
+            self.selected_point_text.insert(1.0, f"Selected: {self.selected_point['label']}\n"
                                                 f"Position: ({self.selected_point['x']:.1f}, {self.selected_point['y']:.1f})")
             self.selected_point_text.config(state='disabled')
 
@@ -2782,15 +2738,6 @@ cached frames (see cache controls)"""
     
     def _set_target_to_bodypart(self, bodypart):
         """Set target to a specific bodypart if it exists in current display"""
-        # Ensure locked key exists (for backwards compatibility)
-        if 'locked' not in self.selected_point:
-            self.selected_point['locked'] = False
-        
-        # Check if current point is locked and trying to select a different bodypart
-        if (self.selected_point['active'] and self.selected_point['locked'] and 
-            self.selected_point['label'] != bodypart):
-            self.status.set(f"Selection is locked on {self.selected_point['label']}. Cannot auto-select {bodypart}.")
-            return
         
         if self.scatter is not None and self.scatter_labels:
             for i, label in enumerate(self.scatter_labels):
@@ -2800,17 +2747,12 @@ cached frames (see cache controls)"""
                         offsets = np.array(offsets)
                     x, y = float(offsets[i][0]), float(offsets[i][1])
                     
-                    # Preserve locked state if switching to the same point
-                    locked_state = (self.selected_point['locked'] if self.selected_point['active'] and 
-                                   self.selected_point['label'] == label else False)
                     self.selected_point['active'] = True
                     self.selected_point['x'] = x
                     self.selected_point['y'] = y
                     self.selected_point['label'] = label
-                    self.selected_point['locked'] = locked_state
                     self.status.set(f"Auto-target set to {label} at ({x:.1f}, {y:.1f})")
                     self._update_target_info()
-                    self._update_unlock_button()
                     self.update_display()
                     return
 
@@ -2952,25 +2894,13 @@ cached frames (see cache controls)"""
         """Update and place the selected point when the combobox value changes."""
         label = self.point_select_var.get()
         
-        # Ensure locked key exists (for backwards compatibility)
-        if 'locked' not in self.selected_point:
-            self.selected_point['locked'] = False
-        
-        # STRICT: If locked and trying to select a different point, do nothing and reset dropdown
-        if (self.selected_point['active'] and self.selected_point['locked'] and 
-            self.selected_point['label'] != label and label):
-            self.status.set(f"Selection is locked on {self.selected_point['label']}. Press 'c' to unlock or use the unlock button.")
-            # Reset dropdown to locked point
-            self.point_select_var.set(self.selected_point['label'])
-            return
         
         if not label:
-            self.selected_point = {'active': False, 'x': None, 'y': None, 'label': None, 'locked': False}
+            self.selected_point = {'active': False, 'x': None, 'y': None, 'label': None}
             self.selected_point_text.config(state='normal')
             self.selected_point_text.delete(1.0, 'end')
             self.selected_point_text.insert(1.0, "No point selected")
             self.selected_point_text.config(state='disabled')
-            self._update_unlock_button()
             return
         cam = self.camera_var.get()
         try:
@@ -3010,6 +2940,154 @@ cached frames (see cache controls)"""
             self.frame_var.set(str(new_frame))
         except ValueError:
             pass
+
+    def mark_proofreading_complete(self):
+        """Mark proofreading as complete and finalize files"""
+        fly_num = self.fly_number.get()
+        type_folder = self.type_folder.get()
+        trial_folder = self.trial_folder.get()
+        
+        # Build description of current context
+        context_desc = f"Fly N{fly_num}"
+        if type_folder and type_folder != "No Type":
+            context_desc += f" ({type_folder})"
+        if trial_folder and trial_folder != "No Trial":
+            context_desc += f" - {trial_folder}"
+        
+        # Show confirmation dialog
+        result = messagebox.askyesno(
+            "Proofreading Complete",
+            f"Are you sure you want to mark proofreading as complete for {context_desc}?\n\n"
+            "This will:\n"
+            "• Version existing pose-2d-filtered folders\n"
+            "• Rename corrected-pose-2d folder to pose-2d-filtered\n"
+            "• Finalize the proofreading process\n\n"
+            "This action cannot be undone.",
+            icon='question'
+        )
+        
+        if not result:
+            return
+        
+        try:
+            self.complete_btn.config(state='disabled', text="Processing...")
+            self.master.update()
+            
+            # Get the directory where corrected files are saved
+            corrected_dir = self._get_corrected_pose_directory()
+            if not corrected_dir or not os.path.exists(corrected_dir):
+                messagebox.showerror("Error", "No corrected pose directory found.")
+                return
+            
+            logger.info(f"Starting proofreading completion process in: {corrected_dir}")
+            
+            # Step 1: Version existing pose-2d-filtered files
+            self._version_existing_pose_files(corrected_dir)
+            
+            # Step 2: Rename corrected-pose-2d to pose-2d-filtered
+            self._rename_corrected_to_filtered(corrected_dir)
+            
+            messagebox.showinfo(
+                "Success",
+                "Proofreading has been marked as complete!\n\n"
+                "Files have been processed and renamed successfully."
+            )
+            
+            logger.info("Proofreading completion process finished successfully")
+            
+        except Exception as e:
+            logger.error(f"Error completing proofreading: {e}")
+            messagebox.showerror("Error", f"Failed to complete proofreading process:\n{str(e)}")
+        finally:
+            self.complete_btn.config(state='normal', text="Proofreading Complete")
+    
+    def _get_corrected_pose_directory(self):
+        """Get the directory where corrected pose folders are located for current fly"""
+        folder = self.folder_path.get()
+        fly_num = self.fly_number.get()
+        type_folder = self.type_folder.get()
+        trial_folder = self.trial_folder.get()
+        
+        if not folder or not fly_num:
+            return None
+        
+        # Build the path to the current fly's directory
+        # Path structure: {folder}/N{fly_num}/{type_folder_if_exists}/{trial_folder_if_exists}/
+        fly_dir = os.path.join(folder, f'N{fly_num}')
+        
+        if type_folder and type_folder != "No Type":
+            fly_dir = os.path.join(fly_dir, type_folder)
+        
+        if trial_folder and trial_folder != "No Trial":
+            fly_dir = os.path.join(fly_dir, trial_folder)
+        
+        # Check if corrected-pose-2d folder exists in the fly's directory
+        corrected_dir = os.path.join(fly_dir, "corrected-pose-2d")
+        if os.path.exists(corrected_dir) and os.path.isdir(corrected_dir):
+            return fly_dir  # Return directory containing the corrected-pose-2d folder
+        
+        # Also search recursively within the fly's directory structure
+        if os.path.exists(fly_dir):
+            for root, dirs, files in os.walk(fly_dir):
+                if "corrected-pose-2d" in dirs:
+                    return root
+        
+        # Fallback: search in the main folder but log a warning
+        logger.warning(f"Could not find corrected-pose-2d in expected fly directory: {fly_dir}")
+        for root, dirs, files in os.walk(folder):
+            if "corrected-pose-2d" in dirs:
+                logger.info(f"Found corrected-pose-2d in fallback location: {root}")
+                return root
+        
+        return fly_dir  # Default to fly directory
+    
+    def _version_existing_pose_files(self, directory):
+        """Version existing pose-2d-filtered folders"""
+        pose_folders = [f for f in os.listdir(directory) 
+                       if f.startswith("pose-2d-filtered") and os.path.isdir(os.path.join(directory, f))]
+        
+        if not pose_folders:
+            logger.info("No existing pose-2d-filtered folders to version")
+            return
+        
+        logger.info(f"Found {len(pose_folders)} existing pose-2d-filtered folders to version")
+        
+        for foldername in pose_folders:
+            base_name = foldername
+            version_num = 1
+            
+            # Find the next available version number
+            while True:
+                new_name = f"{base_name}-v{version_num}"
+                new_path = os.path.join(directory, new_name)
+                
+                if not os.path.exists(new_path):
+                    break
+                version_num += 1
+            
+            old_path = os.path.join(directory, foldername)
+            logger.info(f"Versioning folder: {foldername} -> {new_name}")
+            shutil.move(old_path, new_path)
+    
+    def _rename_corrected_to_filtered(self, directory):
+        """Rename corrected-pose-2d folder to pose-2d-filtered"""
+        corrected_folders = [f for f in os.listdir(directory) 
+                           if f.startswith("corrected-pose-2d") and os.path.isdir(os.path.join(directory, f))]
+        
+        if not corrected_folders:
+            logger.warning("No corrected-pose-2d folders found to rename")
+            return
+        
+        logger.info(f"Found {len(corrected_folders)} corrected-pose-2d folders to rename")
+        
+        for foldername in corrected_folders:
+            # Replace "corrected-pose-2d" with "pose-2d-filtered"
+            new_name = foldername.replace("corrected-pose-2d", "pose-2d-filtered")
+            old_path = os.path.join(directory, foldername)
+            new_path = os.path.join(directory, new_name)
+            
+            logger.info(f"Renaming folder: {foldername} -> {new_name}")
+            shutil.move(old_path, new_path)
 
 def main():
     """Main application entry point"""
