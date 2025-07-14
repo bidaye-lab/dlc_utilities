@@ -31,7 +31,7 @@ import tempfile
 import threading
 import winreg
 
-# Arm Draw Mode Constants
+# Leg Draw Mode Constants
 ARM_DRAW_ANGLE_SENSITIVITY = 5.0    # degrees - how sharp a turn must be to place a point
 ARM_DRAW_JITTER_FILTER = 1.0        # pixels - minimum distance between points
 ARM_DRAW_PREVIEW_FREQUENCY = 1      # update preview every N points
@@ -890,47 +890,9 @@ class ProofreadingInterface:
             tk.Label(self.video_frame, text=f"Error loading error data: {e}", 
                     fg='red', font=('', 12)).pack(pady=20)
             return
-        
-        # Ensure proofread_progress.csv exists
-        logger.info(f"Checking progress file: {progress_file}")
-        if not os.path.isfile(progress_file):
-            logger.info("Progress file not found, creating new one")
-            progress_df = pd.DataFrame({
-                'Error': list(range(1, len(self.error_df)+1)),
-                'is_completed': [False]*len(self.error_df)
-            })
-            try:
-                progress_df.to_csv(progress_file, index=False)
-                logger.info("Progress file created successfully")
-            except Exception as e:
-                logger.error(f"Error creating progress file: {e}")
-        else:
-            logger.info("Progress file exists")
-        
-        # Load progress and find first incomplete error
-        start_idx = 0
-        try:
-            logger.info("Loading progress data")
-            progress_df = pd.read_csv(progress_file)
-            logger.info(f"Progress data loaded, shape: {progress_df.shape}")
-            first_incomplete = progress_df.index[~progress_df['is_completed']].tolist()
-            if first_incomplete:
-                start_idx = first_incomplete[0]
-                logger.info(f"First incomplete error index: {start_idx}")
-        except pd.errors.EmptyDataError:
-            logger.warning("Progress file is empty (pandas EmptyDataError)")
-            progress_df = pd.DataFrame({
-                'Error': [],
-                'is_completed': []
-            })
-            try:
-                progress_df.to_csv(progress_file, index=False)
-                logger.info("Empty progress file created successfully")
-            except Exception as e:
-                logger.error(f"Error creating empty progress file: {e}")
-        except Exception as e:
-            logger.error(f"Error loading progress data: {e}")
-            traceback.print_exc()
+              
+        # Get starting error index (set by _load_progress_status after camera setup)
+        start_idx = getattr(self, 'start_error_index', 0)
         
         # Load camera constants
         try:
@@ -1145,6 +1107,119 @@ class ProofreadingInterface:
                 self.video_frame_counts[cam] = 0
                 
         self.available_cameras = [cam for cam in all_cameras if cam in self.mp4_files]
+        
+        # Initialize proofread_progress.csv after camera setup is complete
+        self._initialize_progress_csv()
+        
+        # Load progress to determine starting error index
+        self._load_progress_status()
+
+    def _initialize_progress_csv(self):
+        """Initialize proofread_progress.csv with camera columns"""
+        try:
+            fly_num = self.fly_number.get()
+            type_folder = self.type_folder.get()
+            trial_folder = self.trial_folder.get()
+            genotype = self.genotype.get()
+            
+            # Use the same path logic as error file loading
+            output_dir = os.path.join(self.folder_path.get(), f"proofreader-output-{genotype}-N{fly_num}")
+            if type_folder and type_folder != "No Type":
+                output_dir = os.path.join(output_dir, type_folder)
+            if trial_folder and trial_folder != "No Trial":
+                output_dir = os.path.join(output_dir, trial_folder)
+            
+            # Handle write permissions with fallbacks
+            output_dir = self._get_writable_output_dir(output_dir)
+            
+            progress_file = os.path.join(output_dir, "proofread_progress.csv")
+            
+            # Ensure proofread_progress.csv exists
+            logger.info(f"Checking progress file: {progress_file}")
+            if not os.path.isfile(progress_file):
+                logger.info("Progress file not found, creating new one")
+                # Create base columns
+                progress_data = {
+                    'Error': list(range(1, len(self.error_df)+1)),
+                    'is_completed': [False]*len(self.error_df)
+                }
+                # Add camera columns for tracking modified frames
+                for camera in self.available_cameras:
+                    camera_name = camera.split('-')[0]  # Extract camera name (e.g., 'A' from 'A-video.mp4')
+                    progress_data[camera_name] = ['[]']*len(self.error_df)  # Initialize with empty lists as strings
+                
+                progress_df = pd.DataFrame(progress_data)
+                try:
+                    progress_df.to_csv(progress_file, index=False)
+                    logger.info("Progress file created successfully")
+                except Exception as e:
+                    logger.error(f"Error creating progress file: {e}")
+            else:
+                logger.info("Progress file exists")
+                # Check if camera columns exist, add them if missing
+                try:
+                    existing_df = pd.read_csv(progress_file)
+                    columns_added = False
+                    for camera in self.available_cameras:
+                        camera_name = camera.split('-')[0]
+                        if camera_name not in existing_df.columns:
+                            existing_df[camera_name] = ['[]']*len(existing_df)
+                            columns_added = True
+                            logger.info(f"Added missing camera column: {camera_name}")
+                    
+                    if columns_added:
+                        existing_df.to_csv(progress_file, index=False)
+                        logger.info("Updated progress file with missing camera columns")
+                except Exception as e:
+                    logger.error(f"Error checking/updating progress file columns: {e}")
+        except Exception as e:
+            logger.error(f"Error initializing progress CSV: {e}")
+
+    def _load_progress_status(self):
+        """Load progress status and set starting error index"""
+        try:
+            fly_num = self.fly_number.get()
+            type_folder = self.type_folder.get()
+            trial_folder = self.trial_folder.get()
+            genotype = self.genotype.get()
+            
+            # Use the same path logic as error file loading
+            output_dir = os.path.join(self.folder_path.get(), f"proofreader-output-{genotype}-N{fly_num}")
+            if type_folder and type_folder != "No Type":
+                output_dir = os.path.join(output_dir, type_folder)
+            if trial_folder and trial_folder != "No Trial":
+                output_dir = os.path.join(output_dir, trial_folder)
+            
+            # Handle write permissions with fallbacks
+            output_dir = self._get_writable_output_dir(output_dir)
+            
+            progress_file = os.path.join(output_dir, "proofread_progress.csv")
+            
+            # Set default starting index
+            self.start_error_index = 0
+            
+            if os.path.exists(progress_file):
+                try:
+                    logger.info("Loading progress data")
+                    progress_df = pd.read_csv(progress_file)
+                    logger.info(f"Progress data loaded, shape: {progress_df.shape}")
+                    first_incomplete = progress_df.index[~progress_df['is_completed']].tolist()
+                    if first_incomplete:
+                        self.start_error_index = first_incomplete[0]
+                        logger.info(f"First incomplete error index: {self.start_error_index}")
+                except pd.errors.EmptyDataError:
+                    logger.warning("Progress file is empty (pandas EmptyDataError)")
+                    self.start_error_index = 0
+                except Exception as e:
+                    logger.error(f"Error loading progress data: {e}")
+                    self.start_error_index = 0
+            else:
+                logger.info("Progress file does not exist, starting from first error")
+                self.start_error_index = 0
+                
+        except Exception as e:
+            logger.error(f"Error loading progress status: {e}")
+            self.start_error_index = 0
 
     def _create_video_layout(self):
         """Create the video interface layout"""
@@ -1372,7 +1447,7 @@ class ProofreadingInterface:
 Q/E: Previous/Next error
 S: Next recommended camera
 Space: Play/Pause error range
-W: Arm Draw Mode (select limb point first)
+W: Leg Draw Mode (select limb point first)
 Left-click on point: Select point
 Left-click on empty space: Move selected point
 Drag: Move point freely
@@ -1451,7 +1526,7 @@ cached frames (see cache controls)"""
         # Selected point state
         self.selected_point = {'active': False, 'x': None, 'y': None, 'label': None}
         
-        # Arm draw mode state
+        # Leg Draw Mode state
         self.arm_draw_mode = False
         self.arm_draw_data = {
             'active': False,
@@ -2047,7 +2122,7 @@ cached frames (see cache controls)"""
                     except:
                         pass
         
-        # Handle arm draw mode dragging
+        # Handle Leg Draw Mode dragging
         if (self.arm_draw_mode and self.arm_draw_data['active'] and 
             event.xdata is not None and event.ydata is not None):
             self._continue_arm_draw(event.xdata, event.ydata)
@@ -2060,7 +2135,7 @@ cached frames (see cache controls)"""
 
     def on_mouse_press(self, event):
         """Handle mouse press for point selection and moving selected point"""
-        # Handle arm draw mode
+        # Handle Leg Draw Mode
         if (self.arm_draw_mode and event.inaxes == self.ax and 
             event.xdata is not None and event.ydata is not None):
             self._start_arm_draw(event.xdata, event.ydata)
@@ -2134,7 +2209,7 @@ cached frames (see cache controls)"""
 
     def on_mouse_release(self, event):
         """Handle mouse release to save point changes"""
-        # Handle arm draw mode completion
+        # Handle Leg Draw Mode completion
         if (self.arm_draw_mode and self.arm_draw_data['active'] and 
             event.xdata is not None and event.ydata is not None):
             self._finish_arm_draw(event.xdata, event.ydata)
@@ -2230,11 +2305,76 @@ cached frames (see cache controls)"""
             if (scorer, label, 'likelihood') in pose_df.columns:
                 pose_df.at[pose_frame, (scorer, label, 'likelihood')] = 1.0
             self._pending_pose_edits.add(cam)
+            
+            # Track frame modification in progress CSV
+            self._track_frame_modification(cam, frame)
+            
             logger.info(f"Updated {label} position at frame {frame} (pose frame {pose_frame}) for camera {cam}")
             self.status.set(f"Updated {label} position at frame {frame} (not yet saved)")
             
         except Exception as e:
             messagebox.showerror("Save Error", f"Could not update point edit: {e}")
+
+    def _track_frame_modification(self, camera, frame):
+        """Track frame modification in progress CSV for current error"""
+        try:
+            # Get current error index
+            if not hasattr(self, 'current_error_index') or not self.current_error_index:
+                return
+            
+            error_idx = self.current_error_index[0]
+            
+            # Build output directory path
+            fly_num = self.fly_number.get()
+            type_folder = self.type_folder.get()
+            trial_folder = self.trial_folder.get()
+            genotype = self.genotype.get()
+            
+            output_dir = f"proofreader-output-{genotype}-N{fly_num}"
+            if type_folder and type_folder != "No Type":
+                output_dir = os.path.join(output_dir, type_folder)
+            if trial_folder and trial_folder != "No Trial":
+                output_dir = os.path.join(output_dir, trial_folder)
+            
+            progress_file = os.path.join(output_dir, "proofread_progress.csv")
+            
+            if not os.path.exists(progress_file):
+                return
+            
+            # Read current progress
+            progress_df = pd.read_csv(progress_file)
+            
+            # Get camera name (e.g., 'A' from 'A-video.mp4')
+            camera_name = camera.split('-')[0] if '-' in camera else camera
+            
+            # Check if camera column exists
+            if camera_name not in progress_df.columns:
+                progress_df[camera_name] = ['[]'] * len(progress_df)
+            
+            # Get current frames list for this error and camera
+            if error_idx < len(progress_df):
+                current_frames_str = progress_df.at[error_idx, camera_name]
+                try:
+                    # Parse existing frames list
+                    current_frames = eval(current_frames_str) if current_frames_str != '[]' else []
+                    if not isinstance(current_frames, list):
+                        current_frames = []
+                except:
+                    current_frames = []
+                
+                # Add frame if not already present
+                if frame not in current_frames:
+                    current_frames.append(frame)
+                    current_frames.sort()  # Keep frames sorted
+                    
+                    # Update CSV
+                    progress_df.at[error_idx, camera_name] = str(current_frames)
+                    progress_df.to_csv(progress_file, index=False)
+                    
+                    logger.info(f"Tracked frame {frame} modification for camera {camera_name} in error {error_idx + 1}")
+            
+        except Exception as e:
+            logger.error(f"Error tracking frame modification: {e}")
 
     def _show_save_progress(self):
         """Show progress bar for save operations"""
@@ -2701,7 +2841,7 @@ cached frames (see cache controls)"""
             self._cancel_arm_draw_mode()
 
     def _toggle_arm_draw_mode(self):
-        """Toggle arm draw mode if a limb point is selected"""
+        """Toggle Leg Draw Mode if a limb point is selected"""
         if not self.selected_point['active']:
             self.status.set("No point selected. Select a limb point first.")
             return
@@ -2733,7 +2873,7 @@ cached frames (see cache controls)"""
                 segment in ['ThC', 'CTr', 'FeTi', 'TiTa', 'TaG'])
 
     def _start_arm_draw_mode(self, label):
-        """Start arm draw mode for the selected limb"""
+        """Start Leg Draw Mode for the selected limb"""
         # Extract base label (e.g., "L-F-" from "L-F-ThC")
         parts = label.split('-')
         base_label = f"{parts[0]}-{parts[1]}-"
@@ -2745,10 +2885,10 @@ cached frames (see cache controls)"""
         self.arm_draw_data['preview_points'] = []
         self._clear_preview_circles()
         
-        self.status.set(f"Arm Draw Mode: Draw the {base_label} limb. Press Esc to cancel.")
+        self.status.set(f"Leg Draw Mode: Draw the {base_label} limb. Press Esc to cancel.")
 
     def _cancel_arm_draw_mode(self):
-        """Cancel arm draw mode and clear preview"""
+        """Cancel Leg Draw Mode and clear preview"""
         if self.arm_draw_mode:
             self.arm_draw_mode = False
             self.arm_draw_data['active'] = False
@@ -2756,7 +2896,7 @@ cached frames (see cache controls)"""
             self.arm_draw_data['path'] = []
             self.arm_draw_data['preview_points'] = []
             self._clear_preview_circles()
-            self.status.set("Arm Draw Mode cancelled.")
+            self.status.set("Leg Draw Mode cancelled.")
 
     def _clear_preview_circles(self):
         """Clear all preview circles from the plot"""
