@@ -807,6 +807,9 @@ class ProofreadingInterface:
             # Enable the proofreading complete button
             self.complete_btn.config(state='normal')
             
+            # Enable the export DLC training data button
+            self.export_dlc_btn.config(state='normal')
+            
             messagebox.showinfo("Processing Complete", 
                               f"Error detection completed successfully!\n\n"
                               f"Results saved to:\n{output_dir}\n\n"
@@ -1492,6 +1495,16 @@ cached frames (see cache controls)"""
                                      state='disabled')
         self.complete_btn.pack(fill='x')
         
+        # Export DLC Training Data button
+        self.export_dlc_btn = tk.Button(meta_controls_frame, 
+                                       text="Export DLC Training Data", 
+                                       command=self.export_dlc_training_data,
+                                       font=('Arial', 10, 'bold'),
+                                       bg="#FF6B35", fg='white',
+                                       padx=10, pady=5,
+                                       state='disabled')
+        self.export_dlc_btn.pack(fill='x', pady=(5, 0))
+        
         # Progress bar for save feedback
         self.save_progress = ttk.Progressbar(info_frame, mode='determinate', length=200)
         self.save_progress.pack(fill='x', pady=(5, 0))
@@ -1702,6 +1715,9 @@ cached frames (see cache controls)"""
             frame = int(self.frame_var.get())
         except ValueError:
             frame = 0
+        
+        # Track frame visit for current error session
+        self._track_frame_visit(cam, frame)
         
         # Clear axis
         self.ax.clear()
@@ -2325,12 +2341,13 @@ cached frames (see cache controls)"""
             error_idx = self.current_error_index[0]
             
             # Build output directory path
+            folder = self.folder_path.get()
             fly_num = self.fly_number.get()
             type_folder = self.type_folder.get()
             trial_folder = self.trial_folder.get()
             genotype = self.genotype.get()
             
-            output_dir = f"proofreader-output-{genotype}-N{fly_num}"
+            output_dir = os.path.join(folder, f"proofreader-output-{genotype}-N{fly_num}")
             if type_folder and type_folder != "No Type":
                 output_dir = os.path.join(output_dir, type_folder)
             if trial_folder and trial_folder != "No Trial":
@@ -2375,6 +2392,68 @@ cached frames (see cache controls)"""
             
         except Exception as e:
             logger.error(f"Error tracking frame modification: {e}")
+
+    def _track_frame_visit(self, camera, frame):
+        """Track frame visit (navigation) during current error session"""
+        try:
+            # Get current error index
+            if not hasattr(self, 'current_error_index') or not self.current_error_index:
+                return
+            
+            error_idx = self.current_error_index[0]
+            
+            # Build output directory path
+            folder = self.folder_path.get()
+            fly_num = self.fly_number.get()
+            type_folder = self.type_folder.get()
+            trial_folder = self.trial_folder.get()
+            genotype = self.genotype.get()
+            
+            output_dir = os.path.join(folder, f"proofreader-output-{genotype}-N{fly_num}")
+            if type_folder and type_folder != "No Type":
+                output_dir = os.path.join(output_dir, type_folder)
+            if trial_folder and trial_folder != "No Trial":
+                output_dir = os.path.join(output_dir, trial_folder)
+            
+            progress_file = os.path.join(output_dir, "proofread_progress.csv")
+            
+            if not os.path.exists(progress_file):
+                return
+            
+            # Read current progress
+            progress_df = pd.read_csv(progress_file)
+            
+            # Get camera name (e.g., 'A' from 'A-video.mp4')
+            camera_name = camera.split('-')[0] if '-' in camera else camera
+            
+            # Check if camera column exists
+            if camera_name not in progress_df.columns:
+                progress_df[camera_name] = ['[]'] * len(progress_df)
+            
+            # Get current frames list for this error and camera
+            if error_idx < len(progress_df):
+                current_frames_str = progress_df.at[error_idx, camera_name]
+                try:
+                    # Parse existing frames list
+                    current_frames = eval(current_frames_str) if current_frames_str != '[]' else []
+                    if not isinstance(current_frames, list):
+                        current_frames = []
+                except:
+                    current_frames = []
+                
+                # Add frame if not already present
+                if frame not in current_frames:
+                    current_frames.append(frame)
+                    current_frames.sort()  # Keep frames sorted
+                    
+                    # Update CSV
+                    progress_df.at[error_idx, camera_name] = str(current_frames)
+                    progress_df.to_csv(progress_file, index=False)
+                    
+                    logger.debug(f"Tracked frame {frame} visit for camera {camera_name} in error {error_idx + 1}")
+            
+        except Exception as e:
+            logger.error(f"Error tracking frame visit: {e}")
 
     def _show_save_progress(self):
         """Show progress bar for save operations"""
@@ -3815,6 +3894,315 @@ cached frames (see cache controls)"""
             
             logger.info(f"Renaming folder: {foldername} -> {new_name}")
             shutil.move(old_path, new_path)
+
+    def export_dlc_training_data(self):
+        """Export corrected pose data to DLC training data format"""
+        try:
+            # Get progress file to determine which frames were corrected
+            progress_file = self._get_progress_file_path()
+            if not progress_file or not os.path.exists(progress_file):
+                messagebox.showerror("Error", "No progress file found. Please ensure proofreading has been started.")
+                return
+            
+            # Read progress file
+            import pandas as pd
+            import ast
+            
+            progress_df = pd.read_csv(progress_file)
+            
+            # Get all corrected frames per camera
+            cameras = [col for col in progress_df.columns if col not in ['Error', 'is_completed']]
+            corrected_frames = {}
+            
+            for camera in cameras:
+                frames_set = set()
+                for _, row in progress_df.iterrows():
+                    if pd.notna(row[camera]) and row[camera] != '[]':
+                        try:
+                            frame_list = ast.literal_eval(row[camera])
+                            frames_set.update(frame_list)
+                        except:
+                            continue
+                corrected_frames[camera] = sorted(list(frames_set))
+            
+            # Get corrected pose directory
+            corrected_dir = self._get_corrected_pose_directory()
+            if not corrected_dir or not os.path.exists(corrected_dir):
+                messagebox.showerror("Error", "No corrected pose directory found.")
+                return
+            
+            # Find the actual corrected-pose-2d directory
+            corrected_pose_dir = os.path.join(corrected_dir, "corrected-pose-2d")
+            if not os.path.exists(corrected_pose_dir):
+                # Try alternate location (anipose subdirectory)
+                corrected_pose_dir = os.path.join(corrected_dir, "anipose", f"N{self.fly_number.get()}", "corrected-pose-2d")
+                if not os.path.exists(corrected_pose_dir):
+                    messagebox.showerror("Error", "Cannot find corrected-pose-2d directory.")
+                    return
+            
+            # Create dlc-training-data directory
+            dlc_dir = os.path.join(os.path.dirname(corrected_pose_dir), "dlc-training-data")
+            os.makedirs(dlc_dir, exist_ok=True)
+            
+            # Get actual genotype from existing files
+            genotype = self._get_actual_genotype_from_files(corrected_pose_dir)
+            
+            # Process each camera
+            for camera in cameras:
+                if not corrected_frames[camera]:
+                    continue
+                    
+                # Find corresponding h5 file
+                h5_file = os.path.join(corrected_pose_dir, f"{genotype}-{camera}.h5")
+                
+                if not os.path.exists(h5_file):
+                    logger.warning(f"H5 file not found for camera {camera}: {h5_file}")
+                    continue
+                
+                # Load pose data
+                pose_df = pd.read_hdf(h5_file, 'df')
+                
+                # Get video filename (without extension)
+                video_files = self._get_video_files_for_camera(camera)
+                if not video_files:
+                    logger.warning(f"No video files found for camera {camera}")
+                    continue
+                    
+                video_name = os.path.splitext(os.path.basename(video_files[0]))[0]
+                
+                # Create DLC training data for this camera
+                dlc_data = self._create_dlc_training_data(pose_df, corrected_frames[camera], video_name)
+                
+                # Save CSV using csv.writer to avoid pandas formatting issues
+                csv_file = os.path.join(dlc_dir, f"CollectedData_BidayeLab_{camera}.csv")
+                self._write_dlc_csv(dlc_data, csv_file)
+                
+                # Save H5 - create proper DLC format DataFrame
+                h5_file_out = os.path.join(dlc_dir, f"CollectedData_BidayeLab_{camera}.h5")
+                self._write_dlc_h5(pose_df, corrected_frames[camera], h5_file_out)
+                
+                # Create images folder structure and extract frames
+                self._create_camera_images(camera, corrected_frames[camera], dlc_dir)
+                
+                logger.info(f"Exported DLC training data for camera {camera}: {len(corrected_frames[camera])} frames")
+            
+            messagebox.showinfo(
+                "Success",
+                f"DLC training data exported successfully to:\n{dlc_dir}\n\n"
+                f"Exported data for {len([c for c in cameras if corrected_frames[c]])} cameras."
+            )
+            
+        except Exception as e:
+            logger.error(f"Error exporting DLC training data: {e}")
+            messagebox.showerror("Error", f"Failed to export DLC training data:\n{str(e)}")
+
+    def _create_dlc_training_data(self, pose_df, corrected_frames, video_name):
+        """Create DLC training data format from pose data"""
+        import csv
+        
+        # Debug: Check the actual column structure
+        logger.info(f"Pose DataFrame columns: {pose_df.columns}")
+        logger.info(f"Pose DataFrame shape: {pose_df.shape}")
+        
+        # Get bodypart names from MultiIndex - more robust approach
+        if hasattr(pose_df.columns, 'levels'):
+            # MultiIndex columns
+            if len(pose_df.columns.levels) >= 2:
+                bodyparts = pose_df.columns.get_level_values(1).unique()
+                scorer = pose_df.columns.get_level_values(0)[0]
+            else:
+                bodyparts = pose_df.columns.get_level_values('bodyparts').unique()
+                scorer = 'BidayeLab'
+        else:
+            # Single level columns - shouldn't happen but handle gracefully
+            bodyparts = [col for col in pose_df.columns if not col.endswith('_x') and not col.endswith('_y')]
+            scorer = 'BidayeLab'
+        
+        logger.info(f"Detected bodyparts: {bodyparts}")
+        logger.info(f"Detected scorer: {scorer}")
+        
+        # Create all rows as lists (no DataFrame)
+        all_rows = []
+        
+        # Row 1: scorer
+        row1 = ['scorer', '', ''] + ['BidayeLab'] * (len(bodyparts) * 2)
+        all_rows.append(row1)
+        
+        # Row 2: bodyparts
+        row2 = ['bodyparts', '', '']
+        for bodypart in bodyparts:
+            row2.extend([bodypart, bodypart])
+        all_rows.append(row2)
+        
+        # Row 3: coords
+        row3 = ['coords', '', '']
+        for _ in bodyparts:
+            row3.extend(['x', 'y'])
+        all_rows.append(row3)
+        
+        # Data rows
+        for frame_idx in corrected_frames:
+            if frame_idx in pose_df.index:
+                row = ['labeled-data', video_name, f'img{frame_idx}.png']
+                
+                for bodypart in bodyparts:
+                    try:
+                        # Try different ways to access the data
+                        if hasattr(pose_df.columns, 'levels'):
+                            # MultiIndex access
+                            x_val = pose_df.loc[frame_idx, (scorer, bodypart, 'x')]
+                            y_val = pose_df.loc[frame_idx, (scorer, bodypart, 'y')]
+                        else:
+                            # Single level access
+                            x_val = pose_df.loc[frame_idx, f'{bodypart}_x']
+                            y_val = pose_df.loc[frame_idx, f'{bodypart}_y']
+                        
+                        row.extend([x_val, y_val])
+                        logger.debug(f"Frame {frame_idx}, {bodypart}: x={x_val}, y={y_val}")
+                    except (KeyError, IndexError) as e:
+                        logger.warning(f"Could not access {bodypart} for frame {frame_idx}: {e}")
+                        # If bodypart not found, add NaN values
+                        row.extend([float('nan'), float('nan')])
+                
+                all_rows.append(row)
+        
+        return all_rows
+
+    def _write_dlc_csv(self, data_rows, output_file):
+        """Write DLC CSV using csv.writer to avoid pandas formatting issues"""
+        import csv
+        with open(output_file, 'w', newline='') as csvfile:
+            writer = csv.writer(csvfile)
+            writer.writerows(data_rows)
+
+    def _write_dlc_h5(self, pose_df, corrected_frames, output_file):
+        """Write DLC H5 format with proper MultiIndex structure"""
+        import pandas as pd
+        
+        # Filter the original DataFrame to only include corrected frames
+        filtered_df = pose_df.loc[corrected_frames].copy()
+        
+        # Save to H5 with proper format
+        filtered_df.to_hdf(output_file, 'df', mode='w', format='table')
+
+    def _create_camera_images(self, camera, corrected_frames, dlc_dir):
+        """Create images folder structure and extract frames for a camera"""
+        import cv2
+        import os
+        
+        try:
+            # Create images folder structure
+            images_dir = os.path.join(dlc_dir, "images")
+            camera_images_dir = os.path.join(images_dir, camera)
+            os.makedirs(camera_images_dir, exist_ok=True)
+            
+            # Get video file for this camera
+            video_files = self._get_video_files_for_camera(camera)
+            if not video_files:
+                logger.warning(f"No video files found for camera {camera}")
+                return
+            
+            video_path = video_files[0]  # Use the first video file found
+            logger.info(f"Extracting frames from video: {video_path}")
+            
+            # Open video
+            cap = cv2.VideoCapture(video_path)
+            if not cap.isOpened():
+                logger.error(f"Could not open video file: {video_path}")
+                return
+            
+            # Extract frames using the same frame indexing as the UI
+            for frame_idx in corrected_frames:
+                try:
+                    # Debug: Log what frame we're trying to extract
+                    logger.info(f"Attempting to extract frame {frame_idx} for camera {camera}")
+                    
+                    # The frame_idx from the progress CSV should be the video frame number
+                    # that corresponds to what's shown in the UI
+                    
+                    # Set frame position - frame_idx should be the video frame number
+                    cap.set(cv2.CAP_PROP_POS_FRAMES, frame_idx)
+                    
+                    # Verify the actual frame position
+                    actual_frame = cap.get(cv2.CAP_PROP_POS_FRAMES)
+                    logger.info(f"Set video to frame {frame_idx}, actual position: {actual_frame}")
+                    
+                    # Read frame
+                    ret, frame = cap.read()
+                    if ret:
+                        # Save frame as PNG
+                        output_path = os.path.join(camera_images_dir, f"img{frame_idx}.png")
+                        cv2.imwrite(output_path, frame)
+                        logger.info(f"Successfully extracted frame {frame_idx} for camera {camera}")
+                    else:
+                        logger.warning(f"Could not read frame {frame_idx} from video {video_path}")
+                        
+                except Exception as e:
+                    logger.error(f"Error extracting frame {frame_idx} for camera {camera}: {e}")
+            
+            # Close video
+            cap.release()
+            
+            logger.info(f"Extracted {len(corrected_frames)} frames for camera {camera}")
+            
+        except Exception as e:
+            logger.error(f"Error creating camera images for {camera}: {e}")
+
+    def _get_progress_file_path(self):
+        """Get the path to the progress file"""
+        folder = self.folder_path.get()
+        fly_num = self.fly_number.get()
+        genotype = self.genotype.get()
+        
+        progress_dir = os.path.join(folder, f"proofreader-output-{genotype}-N{fly_num}")
+        return os.path.join(progress_dir, "proofread_progress.csv")
+
+    def _get_actual_genotype_from_files(self, corrected_pose_dir):
+        """Get actual genotype from existing files in corrected-pose-2d directory"""
+        try:
+            # Look for H5 files in the directory
+            for filename in os.listdir(corrected_pose_dir):
+                if filename.endswith('.h5'):
+                    # Extract genotype from filename (e.g., "BBHB-A.h5" -> "BBHB")
+                    genotype = filename.split('-')[0]
+                    logger.info(f"Detected genotype from file {filename}: {genotype}")
+                    return genotype
+        except Exception as e:
+            logger.error(f"Error detecting genotype from files: {e}")
+        
+        # Fallback to original method
+        return self.genotype.get()
+
+    def _get_video_files_for_camera(self, camera):
+        """Get video files for a specific camera using the same logic as the UI"""
+        # Use the same video file detection logic as the UI
+        # Check if the camera is in the mp4_files dictionary that's already loaded
+        if hasattr(self, 'mp4_files') and camera in self.mp4_files:
+            video_path = self.mp4_files[camera]
+            if os.path.exists(video_path):
+                logger.info(f"Found video file from UI cache for camera {camera}: {video_path}")
+                return [video_path]
+        
+        # Fallback to searching the folder structure
+        folder = self.folder_path.get()
+        fly_num = self.fly_number.get()
+        
+        # Look for video files in the folder structure
+        video_extensions = ['.mp4', '.avi', '.mov', '.mkv']
+        video_files = []
+        
+        for root, dirs, files in os.walk(folder):
+            for file in files:
+                if any(file.lower().endswith(ext) for ext in video_extensions):
+                    if camera.lower() in file.lower():
+                        video_files.append(os.path.join(root, file))
+        
+        if video_files:
+            logger.info(f"Found video files for camera {camera}: {video_files}")
+        else:
+            logger.warning(f"No video files found for camera {camera} in folder {folder}")
+        
+        return video_files
 
 def main():
     """Main application entry point"""
