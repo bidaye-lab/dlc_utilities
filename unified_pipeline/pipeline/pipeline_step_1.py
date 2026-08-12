@@ -20,6 +20,7 @@ logger = logging.getLogger(__name__)
 # logger.setLevel(logger.INFO)
 # logger.debug("Logging works :)")
 
+import re
 import pandas as pd
 import shutil
 from pathlib import Path
@@ -29,7 +30,6 @@ import glob as glob
 from config import settings
 
 # TODO: these variables no longer needed the program should just directly use settings.setting_name etc.; same goes for other files that use settings
-ROOT = Path(settings.root)
 VIDEOS_PATH = Path(settings.videos_path)
 COMMON_FILES = Path(settings.common_files)
 SAVE_FINAL_CSV: bool = settings.save_final_csv
@@ -45,6 +45,20 @@ from src.hdf import df2hdf
 import pickle
 
 pickle.HIGHEST_PROTOCOL = 4  # Important for compatibility
+
+
+def _get_nx_and_condition(csv_path: Path):
+    """Walk up csv_path's ancestors to find the N* folder and the condition subfolder
+    directly beneath it (e.g. Ball, SS, Air, Amp).
+
+    Returns (nx_name, condition_name), or (None, None) if not found.
+    Structure asserted: .../<parent_dir>/<N*>/<condition>/.../<file>.csv
+    """
+    for i, ancestor in enumerate(csv_path.parents):
+        if re.match(r"^N\d+$", ancestor.name):
+            condition = csv_path.parents[i - 1].name if i > 0 else None
+            return ancestor.name, condition
+    return None, None
 
 
 def clean_dfs(p_csv: Path) -> pd.DataFrame:
@@ -107,7 +121,7 @@ def clean_dfs(p_csv: Path) -> pd.DataFrame:
 
 
 def traverse_dirs(
-    directory_structure: dict, parent_dir: Path, root: Path, path: Path = Path("")
+    directory_structure: dict, parent_dir: Path, path: Path = Path("")
 ) -> None:
     """Traverse the directory dict structure and generate analagous file structure
 
@@ -131,11 +145,12 @@ def traverse_dirs(
             child, dict
         ):  # dict is a directory, create dir and then call recursively
             newpath = path / parent
+            print(f"Traversing {newpath}")
             if not newpath.exists():
                 logger.info(f" Creating new directory {newpath}")
                 newpath.mkdir()
                 # recursively call to traverse all subdirs
-                traverse_dirs(child, parent_dir, root, path=newpath)
+                traverse_dirs(child, parent_dir, path=newpath)
             else:
                 logger.warning(f"Skipping creating {newpath} because it already exists")
         elif parent == "filesmv" and child:  # move files in child list
@@ -171,13 +186,22 @@ def traverse_dirs(
                     )
         elif parent == "filescv":  # convert files in child list
             for df, csv_path in child:
-                # The DF should only be written to the Nx folder it was taken from,
-                # check that DF original Nx folder matches the current path
-                csv_nx = csv_path.parent.parent.name  # Nx folder for the original CSV
-                current_nx_dir = path.parent.name  # Nx dir currently being traversed
-                # Check that parent directory and Nx folder are the same
-                if parent_dir in csv_path.parents and csv_nx == current_nx_dir:
-                    df2hdf(df, csv_path, path, root)
+                # Route each CSV to the correct Nx/condition Anipose folder.
+                # Walk up csv_path to find the N* folder and condition — works at any
+                # subfolder depth below N*/<condition>.
+                csv_nx, csv_condition = _get_nx_and_condition(csv_path)
+                current_nx_dir = path.parent.name          # e.g. "N1"
+                # anipose/<condition>/project/N1/pose-2d → parents[2].name == condition
+                current_condition = path.parents[2].name   # e.g. "Ball"
+                print(
+                    f"Checking {csv_path.name}: nx={csv_nx}, condition={csv_condition}"
+                )
+                if (
+                    csv_nx == current_nx_dir
+                    and csv_condition == current_condition
+                    and parent_dir in csv_path.parents
+                ):
+                    df2hdf(df, csv_path, path, parent_dir)
         elif (
             parent == "filesmk" and child
         ):  # Create the file if only the file name provided
@@ -191,12 +215,10 @@ def traverse_dirs(
 
 def gen_anipose_files(
     parent_dir: Path,
-    p_network_cfg: Path,
     p_calibration_target: Path,
     p_calibration_timeline: Path,
     preprocessed_dfs: list,
     p_gcam_dummy: Path,
-    root: Path,
     structure: dict = {},
 ) -> None:
     """Generate the necessary anipose file structure given a parent path and a file structure
@@ -205,8 +227,6 @@ def gen_anipose_files(
     ----------
     parent_dir : Path
         Parent directory. This is where anipose folder will be placed
-    p_network_cfg: Path
-        File path to the config file containing DLC model paths
     p_calibration_target: Path
         File path to calibration target config file
     p_calibration_timeline: Path
@@ -216,21 +236,14 @@ def gen_anipose_files(
     p_gcam_dummy: Path
         filepath to the gcam dummy file
     structure : dict, optional
-        The file structure represented as a dictionary, by default {}. If left blank, default will be used. The default will be the minimum required for anipose.
-
-        Dictionary mirrors file structure with directories represented by other dictionaries and files represented by lists with three types of keys:\n
-             1. `filesmv` - this key takes a list of Path objects and moves the files from the path provided to the new path specified in the dict structure
-             2. `filescp` - this key takes a list of Path objects and copies the files from the path provided to the new path specified in the dict structure
-             3. `filesmk` - this key takes a list of strings that specify the name and extension of a new file that will be created at the path specified in the dict structure
+        The file structure represented as a dictionary, by default {}.
     """
 
     # Get anipose calib files based on configs set
     calibration_type = get_calibration_type(p_calibration_target, parent_dir)
     if calibration_type == "fly":
-        # anipose config file
         p_anipose_config = Path(r"../common_files/config_fly.toml")
     elif calibration_type == "board":
-        # anipose config file
         p_anipose_config = Path(r"../common_files/config_board.toml")
     else:
         logger.error(
@@ -246,10 +259,10 @@ def gen_anipose_files(
         logger.error("Calibration files not found")
         return
 
-    # Generate `project` folder structure for anipose
+    # ---------- Ball ----------
     ball_project = {}
     genotype = ""
-    logger.info(f"Generating `ball_` folder structure...")
+    logger.info(f"Generating `Ball` folder structure...")
     for folder in parent_dir.glob("N*"):  # find all fly folders (N1-Nx)
         logger.info(f"Searching {folder.name} directory")
 
@@ -260,20 +273,21 @@ def gen_anipose_files(
             continue
         else:
             logger.info(f"Found Ball folder: {ball_folder}")
-            ball_file = next(ball_folder.glob("*.csv"))
+            ball_file = next(ball_folder.glob("**/*_filtered.csv"), None)
             if ball_file:
-                genotype = get_genotype(ball_file, root)
+                genotype = get_genotype(ball_file, parent_dir)
                 print(f"Genotype for {folder.name} is {genotype}")
             else:
                 logger.error(f"Could not get genotype for {folder}.")
                 logger.warning(f"Skipping this Nx directory!")
+                continue
 
         # Create the gcam dummy file name by filling in the genotype and fly number
         try:
             gcam = (p_gcam_dummy, f"{genotype}-G.h5")
-        except:
+        except Exception:
             gcam = (p_gcam_dummy, f"{genotype}-G.h5")
-        # Structure for the anipose `project` folder # ball_folder.name
+
         ball_project[ball_folder.parent.name] = {
             "pose-2d": {
                 "filescv": preprocessed_dfs,  # will convert the DFs to HDF
@@ -282,84 +296,149 @@ def gen_anipose_files(
             "videos-raw": {},
         }
 
+    # ---------- SS ----------
     SS_project = {}
     genotype = ""
-    logger.info(f"Generating `SS_` folder structure...")
+    logger.info(f"Generating `SS` folder structure...")
     for folder in parent_dir.glob("N*"):  # find all fly folders (N1-Nx)
         logger.info(f"Searching {folder.name} directory")
 
         SS_folder = parent_dir / folder / "SS"
 
         if not SS_folder.exists():
-            logger.error(f"Ball folder {SS_folder} does not exist.")
+            logger.error(f"SS folder {SS_folder} does not exist.")
             continue
         else:
             logger.info(f"Found SS folder: {SS_folder}")
-            SS_file = next(SS_folder.glob("*.csv"))
+            SS_file = next(SS_folder.glob("**/*_filtered.csv"), None)
             if SS_file:
-                genotype = get_genotype(SS_file, root)
+                genotype = get_genotype(SS_file, parent_dir)
                 print(f"Genotype for {folder.name} is {genotype}")
             else:
                 logger.error(f"Could not get genotype for {folder}.")
                 logger.warning(f"Skipping this Nx directory!")
+                continue
 
-        # Create the gcam dummy file name by filling in the genotype and fly number
         try:
             gcam = (p_gcam_dummy, f"{genotype}-G.h5")
-        except:
+        except Exception:
             gcam = (p_gcam_dummy, f"{genotype}-G.h5")
-        # Structure for the anipose `project` folder # ball_folder.name
+
         SS_project[SS_folder.parent.name] = {
             "pose-2d": {
-                "filescv": preprocessed_dfs,  # will convert the DFs to HDF
-                "filescp": [gcam],  # will copy the gcam file
+                "filescv": preprocessed_dfs,
+                "filescp": [gcam],
             },
             "videos-raw": {},
         }
 
-    # Get network set name
-    cfg = load_config(p_network_cfg)
+    # ---------- Air ----------
+    Air_project = {}
+    genotype = ""
+    logger.info(f"Generating `Air` folder structure...")
+    for folder in parent_dir.glob("N*"):  # find all fly folders (N1-Nx)
+        logger.info(f"Searching {folder.name} directory")
 
-    ball_network_set_name = cfg["Ball"]["name"]  # network set for ball
-    SS_network_set_name = cfg["SS"]["name"]  # network set for ball
+        Air_folder = parent_dir / folder / "Air"
 
-    logger.info(f"Using network set name {ball_network_set_name}")
+        if not Air_folder.exists():
+            logger.error(f"Air folder {Air_folder} does not exist.")
+            continue
+        else:
+            logger.info(f"Found Air folder: {Air_folder}")
+            Air_file = next(Air_folder.glob("**/*_filtered.csv"), None)
+            if Air_file:
+                genotype = get_genotype(Air_file, parent_dir)
+                print(f"Genotype for {folder.name} is {genotype}")
+            else:
+                logger.error(f"Could not get genotype for {folder}.")
+                logger.warning(f"Skipping this Nx directory!")
+                continue
+
+        try:
+            gcam = (p_gcam_dummy, f"{genotype}-G.h5")
+        except Exception:
+            gcam = (p_gcam_dummy, f"{genotype}-G.h5")
+
+        Air_project[Air_folder.parent.name] = {
+            "pose-2d": {
+                "filescv": preprocessed_dfs,
+                "filescp": [gcam],
+            },
+            "videos-raw": {},
+        }
+
+    # ---------- Amp ----------
+    amp_project = {}
+    genotype = ""
+    logger.info(f"Generating `Amp` folder structure...")
+    for folder in parent_dir.glob("N*"):  # find all fly folders (N1-Nx)
+        logger.info(f"Searching {folder.name} directory")
+
+        Amp_folder = parent_dir / folder / "Amp"
+
+        if not Amp_folder.exists():
+            logger.error(f"Amp folder {Amp_folder} does not exist.")
+            continue
+        else:
+            logger.info(f"Found Amp folder: {Amp_folder}")
+            Amp_file = next(Amp_folder.glob("**/*_filtered.csv"), None)
+            if Amp_file:
+                genotype = get_genotype(Amp_file, parent_dir)
+                print(f"Genotype for {folder.name} is {genotype}")
+            else:
+                logger.error(f"Could not get genotype for {folder}.")
+                logger.warning(f"Skipping this Nx directory!")
+                continue
+
+        try:
+            gcam = (p_gcam_dummy, f"{genotype}-G.h5")
+        except Exception:
+            gcam = (p_gcam_dummy, f"{genotype}-G.h5")
+
+        amp_project[Amp_folder.parent.name] = {
+            "pose-2d": {
+                "filescv": preprocessed_dfs,
+                "filescp": [gcam],
+            },
+            "videos-raw": {},
+        }
+
+    # ---------- Default structure ----------
     if not structure:
         logger.info("Using default anipose file structure")
-        # Default file structure
         structure = {
             "anipose": {
                 "Ball": {
-                    f"{ball_network_set_name}": {
-                        # will copy calibration files
-                        "calibration": {"filescp": calibration_files},
-                        "project": ball_project,  # N1-Nx
-                        # Will copy the anipose config as `config.toml`
-                        "filescp": [(p_anipose_config, "config.toml")],
-                    },
+                    "calibration": {"filescp": calibration_files},
+                    "project": ball_project,  # N1-Nx
+                    "filescp": [(p_anipose_config, "config.toml")],
                 },
                 "SS": {
-                    f"{SS_network_set_name}": {
-                        # will copy calibration files
-                        "calibration": {"filescp": calibration_files},
-                        "project": SS_project,  # N1-Nx
-                        # Will copy the anipose config as `config.toml`
-                        "filescp": [(p_anipose_config, "config.toml")],
-                    },
+                    "calibration": {"filescp": calibration_files},
+                    "project": SS_project,  # N1-Nx
+                    "filescp": [(p_anipose_config, "config.toml")],
+                },
+                "Air": {
+                    "calibration": {"filescp": calibration_files},
+                    "project": Air_project,  # N1-Nx
+                    "filescp": [(p_anipose_config, "config.toml")],
+                },
+                "Amp": {
+                    "calibration": {"filescp": calibration_files},
+                    "project": amp_project,  # N1-Nx
+                    "filescp": [(p_anipose_config, "config.toml")],
                 },
             }
         }
 
-    traverse_dirs(structure, parent_dir, root, parent_dir)
+    traverse_dirs(structure, parent_dir, parent_dir)
 
-    # Ran succesfully
     return True
 
 
 def run_preprocessing(
     videos: Path = VIDEOS_PATH,
-    root: Path = ROOT,
-    p_networks=COMMON_FILES / Path("DLC_network_sets.yml"),
     p_calibration_target=COMMON_FILES / Path("calibration_target.yml"),
     p_calibration_timeline=COMMON_FILES / Path("calibration_timeline.yml"),
     p_gcam_dummy=COMMON_FILES / Path("GenotypeFly-G.h5"),
@@ -372,8 +451,6 @@ def run_preprocessing(
     ----------
     videos : Path
         Path to folder containing videos (doesn't have to be direct parent)
-    p_networks : Path
-        Path to network config files for DLC
     p_calibration_target : Path, optional
         Path to the YML file which defines which folders require board- and
         fly-based calibrations, by default Path('common_files/calibration_target.yml')
@@ -396,12 +473,19 @@ def run_preprocessing(
         )
 
     processed_dirs = {}
-    for p_csv in videos.glob(
-        "**/*_filtered.csv"
-    ):  # get all filtered CSVs - both Ball and SS
+    for p_csv in videos.glob("**/*_filtered.csv"):  # get all filtered CSVs
+        if "summary_videos" in p_csv.parts:
+            continue
 
-        # The directory holding all data for that particular experiment, i.e parent of nx dir
-        parent_dir: Path = p_csv.parent.parent.parent
+        # Walk up to find the N* folder; its parent is the experiment parent_dir.
+        # Handles CSVs at any subfolder depth below N*/<condition>/.
+        nx_folder = next(
+            (a for a in p_csv.parents if re.match(r"^N\d+$", a.name)), None
+        )
+        if nx_folder is None:
+            logger.warning(f"Skipping {p_csv}: no N* folder found in path")
+            continue
+        parent_dir: Path = nx_folder.parent
         if not parent_dir.exists():
             logger.error(
                 f"Could not find the parent directory of {p_csv}. Check that the folder structure is correct"
@@ -450,12 +534,10 @@ def run_preprocessing(
             continue
         if not gen_anipose_files(
             parent_dir,
-            p_networks,
             p_calibration_target,
             p_calibration_timeline,
             processed_csvs,
             p_gcam_dummy,
-            root,
         ):
             # TODO: gen_anipose_files needs to return somethng when it finishes (maybe directory where it was generated)
             logger.warning(f"Skipped anipose generation for {parent_dir}")

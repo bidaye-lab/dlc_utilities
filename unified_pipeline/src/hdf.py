@@ -34,7 +34,7 @@ def create_file_name(path: Path, root: Path) -> Path:
     """
     path_rel = path.relative_to(root)
 
-    cam_name = str(path.name).split("-")[0]
+    cam_name = str(path.name)[0]
     # fly_num = str(path.parent.parent.name).strip()
 
     # genotype = str(path_rel.parts[0]).strip().replace("-", "").replace("_", "")

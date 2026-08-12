@@ -2,7 +2,8 @@
 Handle generating Anipose calibration files
 """
 
-import logging 
+import logging
+import re
 from datetime import datetime
 from pathlib import Path
 from datetimerange import DateTimeRange
@@ -16,17 +17,30 @@ def to_dt(date_string: str, time: bool = False) -> datetime:
 
 
 def get_date_time(p_project_dir: Path) -> datetime:
-    # name format B-4182023151132-0000
+    # Primary format: B-4182023151132-0000 (>= 2 dashes, second segment is datetime)
+    mp4_files = [file for file in p_project_dir.glob('**/*.mp4') if file.name.count('-') >= 2 and 'summary_videos' not in file.parts]
+    if mp4_files:
+        date_time_string = mp4_files[0].name.split('-')[1]
+        return to_dt(date_time_string, True)
 
-    mp4_files = [file for file in p_project_dir.glob('**/*.mp4') if file.name.count('-') >= 2] # Excludes the `calib-A` etc. calibration movies from the search
-    if not mp4_files:
-        raise ValueError("No valid .mp4 files found in the directory")
-    
-    mp4 = mp4_files[0] # First valid mp4 file, used to get datetime range
-    mp4_name = mp4.name
-    date_time_string = mp4_name.split('-')[1]
+    # Fallback: files are either calib-style <anything>-<letter>.mp4 or plain <letter>.mp4
+    # In either case read the date from calib_date.txt in p_project_dir
+    calib_mp4s = [
+        f for f in p_project_dir.glob('**/*.mp4')
+        if re.fullmatch(r'(?:.+-)?[A-Ha-h]', f.stem) and 'summary_videos' not in f.parts
+    ]
+    if calib_mp4s:
+        calib_date_path = p_project_dir / 'calib_date.txt'
+        if not calib_date_path.exists():
+            raise FileNotFoundError(f"calib_date.txt not found in {p_project_dir}")
+        with open(calib_date_path, 'r') as fh:
+            for line in fh:
+                if line.strip().lower().startswith('date:'):
+                    date_string = line.split(':', 1)[1].strip()
+                    return to_dt(date_string)
+        raise ValueError(f"No 'date:' entry found in {calib_date_path}")
 
-    return to_dt(date_time_string, True)
+    raise ValueError(f"No valid .mp4 files found in {p_project_dir}")
 
 
 def get_calibration_type(p_calibration_target: Path, p_project_dir: Path):

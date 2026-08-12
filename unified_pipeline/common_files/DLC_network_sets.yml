@@ -28,3 +28,24 @@ SS:
   F : \\mpfi.org\public\sb-lab\DLC_SlipperySurfaceAnnotations\2ndIT\Networks\SS_CamF-BidayeLab-2023-05-23
   G :
   H : \\mpfi.org\public\sb-lab\DLC_SlipperySurfaceAnnotations\2ndIT\Networks\SS_CamH-BidayeLab-2023-05-23
+Amp:
+  name: set1
+  A : \\mpfi.org\public\sb-lab\DLC_Annotations_amputated\1_new_projects\camA_amputated-BidayeLab-2025-07-29
+  B : \\mpfi.org\public\sb-lab\DLC_Annotations_amputated\1_new_projects\camB_amputated-BidayeLab-2025-07-29
+  C : \\mpfi.org\public\sb-lab\DLC_Annotations_amputated\1_new_projects\CamC_amputated-BidayeLab-2025-07-29
+  D : \\mpfi.org\public\sb-lab\DLC_Annotations_amputated\1_new_projects\camD_amputated-BidayeLab-2025-07-29
+  E : \\mpfi.org\public\sb-lab\DLC_Annotations_amputated\1_new_projects\camE_amputated-BidayeLab-2025-07-29
+  F : \\mpfi.org\public\sb-lab\DLC_Annotations_amputated\1_new_projects\camF_amputated-BidayeLab-2025-07-29
+  G :
+  H : \\mpfi.org\public\sb-lab\DLC_Annotations_amputated\1_new_projects\camH_ampuatated-BidayeLab-2025-07-29
+
+Air:
+  name: set1
+  A : Z:\DLC_Annotations_air\SS_CamA-BidayeLab-2023-05-22
+  B : Z:\DLC_Annotations_air\SS_CamB-BidayeLab-2023-05-22
+  C : Z:\DLC_SlipperySurfaceAnnotations\2ndIT\Networks\SS_CamC-BidayeLab-2023-05-22
+  D : Z:\DLC_Annotations_air\SS_CamD-BiayeLab-2023-05-23
+  E : Z:\DLC_Annotations_air\SS_camE-BidayeLab-2023-05-23
+  F : Z:\DLC_SlipperySurfaceAnnotations\2ndIT\Networks\SS_CamF-BidayeLab-2023-05-23
+  G :
+  H : Z:\DLC_Annotations_air\SS_CamH-BidayeLab-2023-05-23

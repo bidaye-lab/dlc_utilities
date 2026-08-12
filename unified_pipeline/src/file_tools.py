@@ -35,6 +35,7 @@ def load_csv_as_df(csv: Path) -> pd.DataFrame:
     # READS AS MULTI-INDEXEDS == does not work with current data preprocess methods
 
     df = pd.read_csv(csv, index_col=0, header=[0, 1, 2])
+    # df.columns = pd.MultiIndex.from_tuples(df.columns.tolist())
     df.columns.set_levels([df.columns[0][0]], level="scorer")
     return df
 

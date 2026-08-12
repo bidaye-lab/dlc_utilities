@@ -9,11 +9,108 @@ board:
  - Z:\NehaSapkal_new\Ball_system_data\bpn_project_pc1\BDN2_till04112025\Cschrimson_decap_BDN2_amp_04152025
  - Z:\NehaSapkal_new\Ball_system_data\bpn_project_pc1\BDN2_till04112025\Cschrimson_decap_BDN2_SS_04112025
  - Z:\\NehaSapkal_new\\Ball_system_data\\bpn_project_pc1\\BDN2_till04112025\\Cschrimson_decap_BDN2_amp_04152025
- 
-
+ - Z:\BallSystem_RawData\49_CsChrimson_MDN
+ - Z:\NehaSapkal_new\Ball_system_data\bpn_project_pc1\Cschrimson_CDN1_05082025
+ - Z:\BallSystem_RawData\29_P9_DiffOpsins\P9-S2XChrimsonR
+ - Z:\NehaSapkal_new\Ball_system_data\bpn_project_pc1\Cschrimson_CDN1_05082025
+ - Z:\BPN_Project\7-Cschrimson_BDN3_05062025-stock
+ - Z:\NehaSapkal_new\Ball_system_data\bpn_project_pc1\BDN2_till04112025\Cschrimson_decap_freq_samp_amp
+ - Z:\BPN_Project\4-Cschrimson_AVLPGNG_05112025\N1\Ball
+ - Z:\NehaSapkal_new\Ball_system_data\bpn_project_pc1\MDN\Cschrimson_MDN_Decap_amp_05122025\subset
+ - Z:\NehaSapkal_new\Ball_system_data\bpn_project_pc1\BDN3_TILL_04112025\BDN3_STOCK\Cschrimson_BDN3_05062025
+ - Z:\BPN_Project\Cschrimson_BPN035
+ - Z:\NehaSapkal_new\Ball_system_data\bpn_project_pc1\to track\2-Cschrimson_BPN_0.35_full
+ - Z:\NehaSapkal_new\Ball_system_data\bpn_project_pc1\to track\Cschrimson_BDN31
+ - Z:\NehaSapkal_new\Ball_system_data\BRK_project\GTACR1emp09192025
+ - Z:\NehaSapkal_new\Ball_system_data\BRK_project\GTACR1stop09192025
+ - Z:\BallSystem_RawData\52_CSChrimson_BPN
+ - Z:\NehaSapkal_new\Ball_system_data\bpn_project_pc1\BDN2_till04112025\09-25-25_BDN2
+ - Z:\NehaSapkal_new\Ball_system_data\bpn_project_pc1\BDN2_till04112025\BDN1_Cschrimson_092925
+ - Z:\NehaSapkal_new\Ball_system_data\bpn_project_pc1\BDN2+BN3
+ - Z:\NehaSapkal_new\Ball_system_data\bpn_project_pc1\BDN2+BDN3_AIR
+ - Z:\NehaSapkal_new\Ball_system_data\bpn_project_pc1\BDN1\2CschrimsonMOVED\subsetball
+ - Z:\NehaSapkal_new\Ball_system_data\bpn_project_pc1\BDN2_till04112025\int_samp_Ball_BDN2_91325
+ - Z:\NehaSapkal_new\Ball_system_data\bpn_project_pc1\BPN_Cschrimson_amp_09302025\1_to_analyze_w_ballnw
+ - Z:\NehaSapkal_new\Ball_system_data\bpn_project_pc1\oDN1\Cschrimson_oDN1_decap_amp
+ - Z:\NehaSapkal_new\Ball_system_data\bpn_project_pc1\BDN2+BDN3_AMP_66Hz\folder_st_foranipose\freq_sampl
+ - Z:\NehaSapkal_new\Ball_system_data\bpn_project_pc1\BDN2+BDN3_AMP_66Hz\folder_st_foranipose\int_sampl
+ - Z:\NehaSapkal_new\Ball_system_data\bpn_project_pc1\BDN2_amp_int_samp
+ - Z:\NehaSapkal_new\Ball_system_data\bpn_project_pc1\BDN2_till04112025\BDN2_Decap_activation_ball
+ - Z:\NehaSapkal_new\Ball_system_data\bpn_project_pc1\MDN\Cschrimson_MDN_Decap_amp_05212025_better
+ - Z:\NehaSapkal_new\Ball_system_data\bpn_project_pc1\11-12-2025\folders_to_Share\oDN1_amp_66Hz
+ - Z:\NehaSapkal_new\Ball_system_data\bpn_project_pc1\BDN2_till04112025\to_analyze\Cschrimson_decap_BDN2_SS_04112025
+ - Z:\NehaSapkal_new\Ball_system_data\bpn_project_pc1\11-12-2025\folders_to_Share\BDN2_air_66Hz
+ - Z:\NehaSapkal_new\Ball_system_data\bpn_project_pc1\11-12-2025\folders_to_Share\BDN2_inter_int_Ball
+ - Z:\NehaSapkal_new\Ball_system_data\bpn_project_pc1\11-12-2025\folders_to_Share\BDN2_air_66Hz_set2
+ - Z:\NehaSapkal_new\Ball_system_data\bpn_project_pc1\11-12-2025\folders_to_Share\MDN_ball_66Hz
+ - Z:\NehaSapkal_new\Ball_system_data\bpn_project_pc1\11-12-2025\folders_to_Share\MDN_SS_66Hz
+ - Z:\NehaSapkal_new\Ball_system_data\bpn_project_pc1\11-12-2025\folders_to_Share\BDN2_air_66Hz_set3
+ - Z:\NehaSapkal_new\Ball_system_data\bpn_project_pc1\11-12-2025\folders_to_Share\MDN_AIR_66Hz
+ - Z:\NehaSapkal_new\Ball_system_data\bpn_project_pc1\11-12-2025\folders_to_Share\BDN2_inter_int_Air
+ - Z:\NehaSapkal_new\Ball_system_data\bpn_project_pc1\11-12-2025\folders_to_Share\BDN2_samp_int_Air
+ - Z:\NehaSapkal_new\Ball_system_data\bpn_project_pc1\11-12-2025\folders_to_Share\BDN2_stochastic_set1\Unilateral
+ - Z:\NehaSapkal_new\Ball_system_data\bpn_project_pc1\11-12-2025\folders_to_Share\Cschrimson_empty_11182025
+ - Z:\NehaSapkal_new\Ball_system_data\bpn_project_pc1\11-12-2025\folders_to_Share\BDN2_amp_66Hz
+ - Z:\NehaSapkal_new\Ball_system_data\bpn_project_pc1\11-12-2025\folders_to_Share\BDN2_stochastic_set2\Unilateral
+ - Z:\NehaSapkal_new\Ball_system_data\bpn_project_pc1\11-12-2025\folders_to_Share\BDN2+3_intact_amp_66Hz
+ - Z:\NehaSapkal_new\Ball_system_data\bpn_project_pc1\11-12-2025\folders_to_Share\Cschrimson_decap_BDN3_05182025
+ - Z:\NehaSapkal_new\Ball_system_data\bpn_project_pc1\11-12-2025\folders_to_Share\BDN2+3_decap_Ball_int_samp
+ - Z:\NehaSapkal_new\Ball_system_data\bpn_project_pc1\11-12-2025\folders_to_Share\BDN2_stochastic_set3\unilateral
+ - Z:\NehaSapkal_new\Ball_system_data\bpn_project_pc1\11-12-2025\folders_to_Share\BDN2+cDN1_decap_66Hz
+ - Z:\NehaSapkal_new\Ball_system_data\bpn_project_pc1\11-12-2025\folders_to_Share\BDN2_amp_int_samp
+ - Z:\NehaSapkal_new\Ball_system_data\bpn_project_pc1\11-12-2025\folders_to_Share\BDN2_inter_amp
+ - Z:\NehaSapkal_new\Ball_system_data\bpn_project_pc1\11-12-2025\folders_to_Share\BDN2_Cschrimson_iavlexA
+ - Z:\NehaSapkal_new\Ball_system_data\bpn_project_pc1\11-12-2025\folders_to_Share\MDN_Cschrimson_66hz_amp
+ - Z:\NehaSapkal_new\Ball_system_data\bpn_project_pc1\11-12-2025\folders_to_Share\BDN2_Cschrimson_iavlexA_cont
+ - Z:\NehaSapkal_new\Ball_system_data\bpn_project_pc1\11-12-2025\folders_to_Share\BDN2_Stochastic_set4\Unilateral
+ - Z:\NehaSapkal_new\Ball_system_data\bpn_project_pc1\11-12-2025\folders_to_Share\BDN2_homogygous_set
+ - Z:\NehaSapkal_new\Ball_system_data\bpn_project_pc1\11-12-2025\folders_to_Share\intensity_samp_intact\Ballvel_14-16_days\BDN2_int_samp_intact
+ - Z:\NehaSapkal_new\Ball_system_data\bpn_project_pc1\11-12-2025\folders_to_Share\intensity_samp_intact\Ballvel_14-16_days\BDN2+3_int_samp_intact.
+ - Z:\NehaSapkal_new\Ball_system_data\bpn_project_pc1\11-12-2025\folders_to_Share\intensity_samp_intact\Ballvel_14-16_days\BPN_int_samp_intact
+ - Z:\NehaSapkal_new\Ball_system_data\bpn_project_pc1\11-12-2025\folders_to_Share\BDN2_control_F_red_green_Ball
+ - Z:\NehaSapkal_new\Ball_system_data\bpn_project_pc1\11-12-2025\folders_to_Share\BDN2_control_F_red_green_Air
+ - Z:\NehaSapkal_new\Ball_system_data\bpn_project_pc1\11-12-2025\folders_to_Share\iav_lexA_bdn2_amp
+ - Z:\NehaSapkal_new\Ball_system_data\bpn_project_pc1\11-12-2025\folders_to_Share\BDN2_amp_G_R
+ - Z:\NehaSapkal_new\Ball_system_data\bpn_project_pc1\11-12-2025\folders_to_Share\BDN2_stochastic_set2\Bilateral
+ - Z:\NehaSapkal_new\Ball_system_data\bpn_project_pc1\11-12-2025\folders_to_Share\BDN2_stochastic_set3\Bilateral
+ - Z:\NehaSapkal_new\Ball_system_data\bpn_project_pc1\11-12-2025\folders_to_Share\BDN2_stochastic_set1\Bilateral
+ - Z:\NehaSapkal_new\Ball_system_data\bpn_project_pc1\11-12-2025\folders_to_Share\DNg16_66Hz_decap
+ - Z:\NehaSapkal_new\Ball_system_data\bpn_project_pc1\11-12-2025\folders_to_Share\BDN2_DNg16_decap_66Hz
+ - Z:\NehaSapkal_new\Ball_system_data\bpn_project_pc1\11-12-2025\folders_to_Share\Cschrimson_decap_CDN1_05162025\Only_Ball
+ - Z:\NehaSapkal_new\Ball_system_data\bpn_project_pc1\11-12-2025\folders_to_Share\BDN2_proximal_joints glued
+ - Z:\NehaSapkal_new\Ball_system_data\bpn_project_pc1\11-12-2025\folders_to_Share\cDN1+BDN2_Int_samp
+ - Z:\NehaSapkal_new\Ball_system_data\bpn_project_pc1\11-12-2025\folders_to_Share\BDN2+cDN1_int_samp
+ - Z:\NehaSapkal_new\Ball_system_data\bpn_project_pc1\11-12-2025\folders_to_Share\Fore_mid_BDN2_cschrimson\Fore_Mid
+ - Z:\NehaSapkal_new\Ball_system_data\bpn_project_pc1\11-12-2025\folders_to_Share\Fore_mid_BDN2_cschrimson\Mid_only
+ - Z:\NehaSapkal_new\Ball_system_data\bpn_project_pc1\11-12-2025\folders_to_Share\BDN2_proximal_joints_glued_set2
+ - Z:\NehaSapkal_new\Ball_system_data\bpn_project_pc1\11-12-2025\folders_to_Share\mid_hind_BDN2_cschrimson
+ - Z:\NehaSapkal_new\Ball_system_data\bpn_project_pc1\11-12-2025\folders_to_Share\mid_hind_control_BDN2_cschrimson
+ - Z:\NehaSapkal_new\Ball_system_data\bpn_project_pc1\11-12-2025\folders_to_Share\Glued_stock_03182026
+ - Z:\NehaSapkal_new\Ball_system_data\bpn_project_pc1\11-12-2025\folders_to_Share\BDN2_foreleg_reaching_03242026
+ - Z:\NehaSapkal_new\Ball_system_data\bpn_project_pc1\11-12-2025\folders_to_Share\BDN2_orerleg_reaching_03232026
+ - Z:\NehaSapkal_new\Ball_system_data\bpn_project_pc1\11-12-2025\folders_to_Share\BDN2_fore+hind_cschrimson
+ - Z:\NehaSapkal_new\Ball_system_data\bpn_project_pc1\11-12-2025\folders_to_Share\BDN2_fore+hind_cschrimson\front_hind
+ - Z:\NehaSapkal_new\Ball_system_data\bpn_project_pc1\11-12-2025\folders_to_Share\BDN2_fore+hind_cschrimson\hind_only
+ - Z:\NehaSapkal_new\Ball_system_data\bpn_project_pc1\11-12-2025\folders_to_Share\BDN2_fore+hind_cschrimson\prox_glued
+ - Z:\NehaSapkal_new\Ball_system_data\bpn_project_pc1\11-12-2025\folders_to_Share\BDN2_glued_03272026
+ - Z:\NehaSapkal_new\Ball_system_data\bpn_project_pc1\11-12-2025\folders_to_Share\BDN2_glued_03252026
+ - Z:\NehaSapkal_new\Ball_system_data\bpn_project_pc1\11-12-2025\folders_to_Share\BDN2_oDN1_Cschrimson_03302026
+ - Z:\NehaSapkal_new\Ball_system_data\bpn_project_pc1\11-12-2025\folders_to_Share\BDN2_oDN1_04012026
+ - Z:\NehaSapkal_new\Ball_system_data\bpn_project_pc1\11-12-2025\folders_to_Share\BDN2_proximal_glued_control_stock
+ - Z:\NehaSapkal_new\Ball_system_data\bpn_project_pc1\11-12-2025\folders_to_Share\BDN2_oDN1_temp
+ - Z:\NehaSapkal_new\Ball_system_data\bpn_project_pc1\11-12-2025\folders_to_Share\BDN2_oDN1_04012026\to_analyze
+ - Z:\NehaSapkal_new\Ball_system_data\bpn_project_pc1\11-12-2025\folders_to_Share\BDN2_oDN1_04052026
+ - Z:\NehaSapkal_new\Ball_system_data\bpn_project_pc1\11-12-2025\folders_to_Share\BDN2_oDN1_04052026_good_Fly
+ - Z:\NehaSapkal_new\Ball_system_data\bpn_project_pc1\11-12-2025\folders_to_Share\BDN2_Cchrimson_66hz_04072026\BDN2035
+ - Z:\NehaSapkal_new\Ball_system_data\bpn_project_pc1\11-12-2025\folders_to_Share\BDN2_Cschrimson_decap_66Hz_04102026\older_set
+ - Z:\_Proofreading_CPG_Paper\Front_only
+ - Z:\_Proofreading_CPG_Paper\Air_SM1\oDN1_decap_air_V2
+ - Z:\NehaSapkal_new\Ball_system_data\bpn_project_pc1\11-12-2025\folders_to_Share\revision_6_30_2026\BDN2+oDN1
+ - Z:\NehaSapkal_new\Ball_system_data\bpn_project_pc1\11-12-2025\folders_to_Share\revision_6_30_2026\dummy_test
 fly:
   - \\mpfi.org\public\sb-lab\BallSystem_RawData\29_P9_DiffOpsins\P9-S2X20xCSChrimson
   - \\mpfi.org\public\sb-lab\BallSystem_RawData\29_P9_DiffOpsins\P9-S2Xchrimine
   - \\mpfi.org\public\sb-lab\BallSystem_RawData\29_P9_DiffOpsins\P9-S2XChrimsonR
   - \\mpfi.org\public\sb-lab\DLC_pipeline_Dummy\0_QualityCtrl\Raw_vid\1_FOMOxES_decap
   - \\mpfi.org\public\sb-lab\DLC_pipeline_Dummy\0_QualityCtrl\Raw_vid\2_P91540_ChrimsonR2
+  - Z:\NehaSapkal_new\Ball_system_data\bpn_project_pc1\BPN_Cschrimson_amp_09302025\2_to_analyze_w_ampnw

@@ -1,6 +1,5 @@
 # Configuration file to run the DLC/Anipose pipeline
-videos_path = "C:\\Users\\ryabinkyj\\Documents\\testanalyze\\RawData\\BIN-1"
-root = "C:\\Users\\ryabinkyj\\Documents\\testanalyze"
+videos_path = 'Z:\NehaSapkal_new\Ball_system_data\bpn_project_pc1\11-12-2025\folders_to_Share\revision_6_30_2026\dummy_test'
 common_files = "../common_files"
 
 # Pipeline settings
