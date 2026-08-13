@@ -13,7 +13,7 @@ import pandas as pd
 
 import src.file_tools as file_tools
 from src.file_tools import load_config
-from config import settings
+from config import settings, COMMON_FILES
 
 VIDEOS_PATH = Path(settings.videos_path)
 
@@ -147,7 +147,7 @@ def _render_fly_summary(fly_folder: Path, type_folder: Path, model_paths: dict,
 
 def analyze_new(
     videos_folders_path: Path = VIDEOS_PATH,
-    network_sets_path: Path = Path("../common_files/DLC_network_sets.yml"),
+    network_sets_path: Path = COMMON_FILES / "DLC_network_sets.yml",
     cameras_to_analyze: list = None,
     render_summary: bool = False,
     allow_incomplete: bool = False,

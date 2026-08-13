@@ -15,9 +15,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from config import settings
-
-COMMON_FILES = Path(settings.common_files)
+from config import settings, COMMON_FILES
 
 
 def fix_extra_h_filtered_columns(

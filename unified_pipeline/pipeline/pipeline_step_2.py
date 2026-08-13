@@ -24,9 +24,8 @@ from pathlib import Path
 logger = logging.getLogger()
 logger.debug("Logging works :)")
 
-from config import settings
+from config import settings, COMMON_FILES
 VIDEOS_PATH  = Path(settings.videos_path)
-COMMON_FILES = Path(settings.common_files)
 
 from src.file_tools import find_nx_dirs
 from src.calibration import get_calibration_type

@@ -52,11 +52,10 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
-from config import settings
+from config import settings, COMMON_FILES
 
 logger = logging.getLogger(__name__)
 VIDEOS_PATH  = Path(settings.videos_path)
-COMMON_FILES = Path(settings.common_files)
 
 _SPATIAL_SUFFIXES = ('_x', '_y', '_z', '_r')
 _VEL_COLS         = {'x_vel', 'y_vel', 'z_vel'}

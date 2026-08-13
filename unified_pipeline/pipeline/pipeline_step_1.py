@@ -27,11 +27,10 @@ from pathlib import Path
 import glob as glob
 
 # from pipeline.config import ROOT, VIDEOS_PATH, COMMON_FILES, SAVE_FINAL_CSV, SKIP_PREPROCESSING_FUNCTIONS
-from config import settings
+from config import settings, COMMON_FILES
 
 # TODO: these variables no longer needed the program should just directly use settings.setting_name etc.; same goes for other files that use settings
 VIDEOS_PATH = Path(settings.videos_path)
-COMMON_FILES = Path(settings.common_files)
 SAVE_FINAL_CSV: bool = settings.save_final_csv
 SKIP_PREPROCESSING_FUNCTIONS: bool = settings.skip_preprocessing_functions
 
@@ -242,9 +241,9 @@ def gen_anipose_files(
     # Get anipose calib files based on configs set
     calibration_type = get_calibration_type(p_calibration_target, parent_dir)
     if calibration_type == "fly":
-        p_anipose_config = Path(r"../common_files/config_fly.toml")
+        p_anipose_config = COMMON_FILES / "config_fly.toml"
     elif calibration_type == "board":
-        p_anipose_config = Path(r"../common_files/config_board.toml")
+        p_anipose_config = COMMON_FILES / "config_board.toml"
     else:
         logger.error(
             f"Invalid calibration type or calibration type not specified in {p_calibration_target}"
