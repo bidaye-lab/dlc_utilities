@@ -1,5 +1,5 @@
 # Configuration file to run the DLC/Anipose pipeline
-videos_path = 'Z:\NehaSapkal_new\Ball_system_data\bpn_project_pc1\11-12-2025\folders_to_Share\revision_6_30_2026\dummy_test'
+videos_path = 'Z:\NehaSapkal_new\Ball_system_data\bpn_project_pc1\11-12-2025\folders_to_Share\revision_6_30_2026\Cschrimson_BDN2_oDN1_14days'
 common_files = "common_files"
 
 # Pipeline settings

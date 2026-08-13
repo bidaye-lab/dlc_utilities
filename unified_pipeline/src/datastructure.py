@@ -8,14 +8,14 @@ directly inside that condition's subfolder.
 Expected layout
 ---------------
 parent_dir/
+  BallVel/              <- only for Ball, requires ball_vel=True
+    <N1_...>.csv
   anipose/
     Ball/
       project/
         N1/
           pose-3d/<file>.csv
           angles/<file>.csv
-      BallVel/          <- only for Ball, requires ball_vel=True
-        <N1_...>.csv
     SS/
       project/
         N1/
@@ -106,15 +106,15 @@ def _read_angles(
 
 
 def _read_ballvel(
-    condition_dir: Path,
+    parent_dir: Path,
     exclude: List[str],
 ) -> Dict[str, pd.DataFrame]:
-    """Read BallVel CSVs from condition_dir/BallVel/, matched to N* fly names.
+    """Read BallVel CSVs from parent_dir/BallVel/, matched to N* fly names.
 
     Fly identity is extracted via regex from the filename stem (e.g. N1 in
     'N1_ballvel.csv').  Files whose stem contains no N* pattern are skipped.
     """
-    ballvel_dir = condition_dir / 'BallVel'
+    ballvel_dir = parent_dir / 'BallVel'
     if not ballvel_dir.exists():
         return {}
     result: Dict[str, pd.DataFrame] = {}
@@ -218,6 +218,7 @@ def _dicts_to_df(d: Dict[str, pd.DataFrame]) -> pd.DataFrame:
 
 def _build_condition_df(
     condition_dir: Path,
+    parent_dir: Path,
     is_ball: bool,
     ball_vel: bool,
     stim_params_path: Optional[Path],
@@ -235,12 +236,13 @@ def _build_condition_df(
         return None
 
     angles = _read_angles(project_dir, exclude)
-    bvel   = _read_ballvel(condition_dir, exclude) if (is_ball and ball_vel) else {}
+    bvel   = _read_ballvel(parent_dir, exclude) if (is_ball and ball_vel) else {}
 
     if is_ball and ball_vel and not bvel:
-        logger.warning(
-            f"ball_vel=True but BallVel/ not found or empty in {condition_dir}"
-        )
+        msg = f"WARNING: ball_vel=True but BallVel/ not found or empty in {parent_dir}"
+        print(msg)
+        logger.warning(msg)
+        print("  Continuing without ball velocity columns.")
 
     pos3d, angles, bvel = _align_dicts(pos3d, angles, bvel, trial_len)
     if not pos3d:
@@ -282,6 +284,8 @@ def run(
         Experiment folder containing an anipose/ subdirectory.
     ball_vel : bool
         Include BallVel data for the Ball condition (default True).
+        Looks for parent_dir/BallVel/*.csv. If the folder is absent, a warning
+        is printed and the dataframe is built without ball velocity columns.
     stim_params_path : Path, optional
         CSV with per-trial stim parameters. Columns are fly names (N1, N2, ...),
         rows are trials. Applied to all conditions that have matching fly columns.
@@ -307,6 +311,7 @@ def run(
         logger.info(f"Processing condition: {condition}")
         df = _build_condition_df(
             condition_dir,
+            parent_dir       = parent_dir,
             is_ball          = is_ball,
             ball_vel         = ball_vel,
             stim_params_path = stim_params_path,
